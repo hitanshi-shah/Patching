@@ -1,0 +1,139 @@
+pipeline{
+     agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker-machine1'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'
+	          args '-v $WORKSPACE:/var/tmp'
+	          args '-u root'
+	          reuseNode true
+
+       }
+   }
+   
+   	environment {
+        Linux_host = credentials('Linux')
+        username = "${Linux_host_USR}"
+        password = "${Linux_host_PSW}"
+    }
+
+   stages {
+      stage('Install Ansible'){
+            steps{
+		script{  
+                 sh """
+                    apt-get install -y ansible
+                    pip install boto3
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                    python3 -m pip install boto3
+		    pwd
+		    ls -ltr
+                    """
+            }
+	    }
+     }  
+        
+	stage('Diskspace Remediation') {
+          when { expression { return fileExists ('disk_precheckfail') } }
+            steps {
+                script {
+                          sh '''
+                                echo "proceeding to remediate diskspace alert"
+                                ansible-playbook -i disk_precheckfail -e  "username=$username" -e "password=$password" diskrem.yml
+                              '''
+            }
+                    }
+            }
+            
+        stage('Security patch Remediation') {
+          when { expression { return fileExists ('rhsa_precheckfail') } }
+            steps {
+                script {
+                          sh '''
+                                echo 'SNOW ticket created'
+                            '''
+            }
+                    }
+            }
+	    
+	    
+        stage('Git push') {
+            steps {
+                script {
+                          sh '''
+                                ansible-playbook -i diskrempassed -e  "username=$username" -e "password=$password" remoterem.yml
+				
+                            '''
+            }
+                    }
+            }    	    
+	    
+/*        stage('patching Remediation') {
+        when { expression { return fileExists ('unpatchedhosts') } }
+            steps {
+                script {
+                          sh '''
+                                echo "proceeding to remediate patching missed host "
+                                sudo cp -p /home/ubuntu/Ansible_plays/pre_patch/unpatchedhosts /var/lib/jenkins/workspace/Linux/Remediation/patchremediatedhosts
+                                sudo cp -p /home/ubuntu/Ansible_plays/pre_patch/unpatchedhosts /home/ubuntu/Ansible_plays/pre_patch/patchremediatedhosts
+                              '''
+            }
+                    }
+            }*/
+
+
+/*        stage('Postcheck Remediation') {
+        when { expression { return fileExists ('postcheckremediatedhost') } }
+            steps {
+                script {
+                          sh '''
+                                echo "proceeding to remediate postcheck issue "
+                                sudo cp -p /home/ubuntu/Ansible_plays/pre_patch/postcheckremediatedhost /var/lib/jenkins/workspace/Linux/Remediation/postcheckremhost
+                                sudo cp -p /home/ubuntu/Ansible_plays/pre_patch/postcheckremediatedhost /var/lib/jenkins/workspace/Linux/Postcheck/postcheckremhost
+                              '''
+            }
+                    }
+            }*/
+
+
+
+
+            stage('Trigger Precheck from remediation') {
+            when { expression { return fileExists ('diskrempassed') } }
+            steps {
+                script {
+                    build job: "Precheck-info", wait: true
+            
+                }
+            }
+            }
+            
+ /*       stage('Trigger Postcheck from remediation') {
+            when { expression { return fileExists ('postcheckremhost') } }
+            steps {
+                script {
+                    build job: "Linux/Postcheck", wait: true
+                
+            
+                }
+            }
+        }*/
+
+/*        stage('Trigger patching from remediation') {
+            when { expression { return fileExists ('patchremediatedhosts') } }
+            steps {
+                script {
+                    build job: "Linux/Patching", wait: true
+                
+            
+                }
+            }
+        }*/
+
+            
+            
+    }
+}

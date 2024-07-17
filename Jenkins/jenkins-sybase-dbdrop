@@ -1,0 +1,86 @@
+pipeline{
+   agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker-machine'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'  
+         args '-v $WORKSPACE:/var/tmp'
+         args '-u root'
+       }
+   }
+   
+  
+parameters {
+  string(name: 'db_name', defaultValue: '', description: 'Enter the db name to be decommisioned')
+  string(name: 'server_name', defaultValue: '', description: 'Enter the server name')
+  string(name: 'instance_name', defaultValue: '', description: 'Enter the instance name')
+
+}   
+    environment {
+        Linux_host = credentials('sqllogin1')
+        username = "${Linux_host_USR}"
+        password = "${Linux_host_PSW}"
+        GIT_TOKEN = credentials('sashangit')
+        db_host = credentials('dbpass')
+        db_password = "${db_host_PSW}"
+        sybase_host = credentials('sybasedb')
+        sybase_pass = "${sybase_host_PSW}"
+ 
+    }
+   
+   stages {
+      stage('Install Ansible'){
+            steps{
+        script{  
+                 sh """
+                apt-get update
+                    apt-get install -y ansible
+           
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                   
+                    """
+            }
+        }
+     }
+     
+     
+          
+    stage('Update SQL File for prvactiveup') {
+            steps {
+                script {
+                    // Replace placeholder in SQL file with Jenkins parameter value
+                    def sqlFilePath = './sybasedrop.sql'
+                    def db_name = params.db_name
+                    sh "sed -i 's/db_name/$db_name/g' ${sqlFilePath}"
+                    sh "cat sybasedrop.sql"
+                }
+            }
+        }
+
+    
+    stage('Reachability check') {
+            steps {
+                script {
+                          def server_name = params.server_name
+                          def instance_name = params.instance_name
+                          sh '''
+                              ansible-playbook -vvv -i wininventory sybasedrop.yml \
+                             -e "username=\\"${username}\\""\
+                             -e "password=\\"${password}\\""\
+                             -e "dbpass=\\"${db_password}\\""\
+                             -e "sybase_pass=\\"${sybase_pass}\\""\
+                             -e "server_name=\\"${server_name}\\""\
+                             -e "instance_name=\\"${instance_name}\\""
+                 
+            '''
+       }
+       }
+       }
+     
+   }
+   
+}
+     

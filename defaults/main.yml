@@ -1,0 +1,6 @@
+---
+# Default variables for Red Hat patching
+redhat_patch_precheck_commands:
+  - ansible-playbook check_diskspace.yml
+  - ansible-playbook checksecurity_patches.yml
+redhat_patch_patch_command: "yum update -y"

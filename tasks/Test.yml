@@ -1,0 +1,21 @@
+---
+- name: Red Hat Patching Playbook
+  hosts: defaults
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: prvcloudacct
+    ansible_password: Inital112223
+
+  tasks:
+    - name: Include precheck hardstop role
+      include_role:
+        name: aig_patching_automation
+        tasks_from: checksecurity_patches.yml
+
+    - name: Include patching role
+      include_role:
+        name: aig_patching_automation
+        tasks_from: Test.yml
+      when:  hostvars[inventory_hostname].space_available == 0

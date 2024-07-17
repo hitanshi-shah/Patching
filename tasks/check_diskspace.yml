@@ -1,0 +1,54 @@
+---
+- name: Check Disk Space Usage
+  hosts: all
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: 
+    ansible_password: 
+    
+    
+  tasks:
+    - name: Finding disk space
+      block:
+        - ping:
+          register: diskspace_check
+          ignore_errors: true
+      always:
+
+        - name: Disk usage from command module
+          shell:
+            "df -h / | awk '{print $5}' | tail -1 | cut -d '%' -f1"
+          register: space
+          ignore_errors: true
+
+        - name: set fact
+          set_fact:
+            space_available: "{{space.stdout | int}}"
+
+        - debug:
+              msg: Threshold reached for host "{{space.stdout_lines}}"
+          when: space_available  > "95"
+
+        - name: write details
+          shell:
+            echo "{{ inventory_hostname }}" >> disk_remediation
+          when: space_available  > "95"
+          delegate_to: localhost
+
+
+        - debug:
+              msg: Remediation file created
+          when: space_available  > "95"
+
+        - name: write details
+          shell:
+            echo "{{ inventory_hostname}}" >> disk_precheckpass
+          when: space_available  < "95"
+          delegate_to: localhost
+
+        - name: write detailslocal
+          shell:
+            echo "{{ inventory_hostname}}" >> disk_precheckpass
+          when: space_available  < "95"

@@ -1,0 +1,21 @@
+pipeline {
+    agent any
+
+    parameters {
+        text(name: 'cisPayload', defaultValue: '', description: 'JSON payload containing CIs')
+    }
+
+    stages {
+        stage('Process CIs') {
+            steps {
+                script {
+                    def cisPayload = params.cisPayload
+
+                    echo "Received CI payload: $cisPayload"
+
+                }
+            }
+        }
+    }
+    
+}

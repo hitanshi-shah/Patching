@@ -1,0 +1,16 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Trigger Job') {
+            steps {
+                script {
+                    def job = build job: 'test', propagate: false
+                    def jobStatus = job.getResult().toString()
+
+                    echo "Jenkins Job Status: ${jobStatus}"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,174 @@
+pipeline{
+   agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker-machine1'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'
+             args '-u root'
+       }
+   }
+   
+   	environment {
+        Linux_host = credentials('sqldefault')
+        username = "${Linux_host_USR}"
+        password = "${Linux_host_PSW}"
+	GIT_TOKEN = credentials('sashangit')
+
+    }
+    
+   stages {
+      stage('Install Ansible'){
+            steps{
+		script{  
+                 sh """
+                  apt-get install -y ansible
+                    pip install boto3
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                    python3 -m pip install boto3
+		    pwd
+		    ls -ltr
+		   
+                    """
+            }
+	    }
+     }
+     
+     
+            stage('Reachability check') {
+            steps {
+                script {
+                          sh '''
+			     ansible-playbook -i ansible_inventory.ini -e  "username=$username" -e "password=$password" Windows_Update_service.yml
+			     apt install dos2unix
+			     bash win_docs_convert.sh
+			     '''
+            }
+            }
+            }
+	   
+	    stage('License check') {
+            steps {
+                script {
+                          sh '''
+			     ansible-playbook -i winupdate_precheck_passed1 -e  "username=$username" -e "password=$password" Gather_license_status.yml
+			     bash win_docs_convert.sh
+			     '''
+            }
+            }
+            }
+	  
+	  
+	    stage('Firewall check') {
+            steps {
+                script {
+                          sh '''
+			     ansible-playbook -i LS_precheck_passed -e  "username=$username" -e "password=$password" Get_firewall_service.yml
+			     bash win_docs_convert.sh
+			     '''
+            }
+            }
+            }
+	    
+	    
+	    stage('Bits check') {
+            steps {
+                script {
+                          sh '''
+			     ansible-playbook -i fw_precheck_passed -e  "username=$username" -e "password=$password" Get_BIT_service.yml
+			     bash win_docs_convert.sh
+			     '''
+            }
+            }
+            }
+	    
+	    stage('Azure monitoring check') {
+            steps {
+                script {
+                          sh '''
+			     ansible-playbook -i bi_precheck_passed -e  "username=$username" -e "password=$password" Get_Azure_Monitoring_service.yml
+			     bash win_docs_convert.sh
+			     '''
+            }
+            }
+            }
+            
+            
+
+      stage('Precheck info-check') {
+            steps {
+                script {
+                          sh '''
+			         ansible-playbook -i am_precheck_passed -e  "username=$username" -e "password=$password" windows_precheckinfo.yml
+     			    
+			     '''
+            }
+            }
+            }
+            
+            
+      stage('Patching') {
+            when { expression { return fileExists ('am_precheck_passed') } }
+            steps {
+                script {
+                          sh '''
+                                echo "proceeding to update"
+                                ansible-playbook -i am_precheck_passed -e  "username=$username" -e "password=$password" windows_patchingtest.yml
+   			        bash win_docs_convert.sh
+
+                             '''
+            }
+                    }
+            }   
+            
+      stage('Post Pingtest') {
+        when {expression { return fileExists ('patch_win_passed') }}
+            steps {
+                script {
+                          
+                                sh ' ansible-playbook -i patch_win_passed -e  "username=$username" -e "password=$password" win_postcheck_installedkbs.yml'
+            }       
+            }
+            }
+            
+            
+      stage('Postcheck-info') {
+        when {expression { return fileExists ('patch_win_passed') }}            
+            steps {
+                script {
+                                
+                                sh '''
+                                ansible-playbook -i patch_win_passed -e  "username=$username" -e "password=$password" windows_postcheckinfo.yml
+				'''
+            }
+            }
+            }
+            
+	    
+      stage('Postcheck-report') {
+        when {expression { return fileExists ('am_precheck_passed') }}            
+            steps {
+                script {
+                                
+                  sh '''
+			                ansible-playbook -i ansible_inventory.ini -e  "username=$username" -e "password=$password" report-latest-win.yml
+			     	          ls -lart
+			     	          bash csv_merge.sh
+			     	          cat winmergedup.csv >> reportwin.csv
+				           awk -F ',' '!($1 in seen) {order[++last] = $1} {seen[$1] = $0} END {for (i = 1; i <= last; i++) print seen[order[i]]}' "reportwin.csv" >> "report2.csv"
+			     	          ansible-playbook -vvv -i ansible_inventory.ini -e  "username=$username" -e "password=$password" report-win-fetch.yml
+				          ansible-playbook -i am_precheck_passed -e  "username=$username" -e "password=$password"  -e "GIT_TOKEN=$GIT_TOKEN"   remotestore-winpost.yml 
+					  
+               '''
+            }
+            }
+            }    
+          
+            
+	    
+   }
+    
+}
+     

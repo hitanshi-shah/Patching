@@ -1,0 +1,59 @@
+
+pipeline {
+	     agent {
+	docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker-machine'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'
+	     args '-v $WORKSPACE:/var/tmp'
+	     args '-u root'
+
+       }    
+}
+
+   	environment {
+        Linux_host = credentials('Linux')
+        username = "${Linux_host_USR}"
+        password = "${Linux_host_PSW}"
+	GIT_TOKEN = credentials('sashangit')
+	
+        Windows_host = credentials('sqldefault')
+        win_username = "${Windows_host_USR}"
+        win_password = "${Windows_host_PSW}"
+    }
+
+
+    stages {
+    
+           stage('Install Ansible'){
+            steps{
+		script{  
+                 sh """
+                    apt-get install -y ansible
+		    pip install openpyxl
+                    pip install boto3
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                    python3 -m pip install boto3
+		    pwd
+		    ls -ltr
+                    """
+            }
+	    }
+     }
+
+	stage('Create ServiceNow Incident') {
+            steps {
+                script {
+		   sh '''
+                   ansible-playbook -i inventory_winpatch -e  "username=$username" -e "password=$password" json2inventory.yml
+		   cat ansible_inventory1.ini
+		  
+		   '''
+                }
+            }
+        }
+    }
+}

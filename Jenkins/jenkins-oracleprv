@@ -1,0 +1,145 @@
+pipeline{
+   agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker-machine'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'  
+         args '-v $WORKSPACE:/var/tmp'
+         args '-u root'
+       }
+   }
+   
+    environment {
+        Linux_host = credentials('sqldefault')
+        username = "${Linux_host_USR}"
+        password = "${Linux_host_PSW}"
+    GIT_TOKEN = credentials('sashangit')
+ 
+    }
+   
+    parameters {
+   
+         choice(name: 'Automation' , choices: ['prvadd' , 'prvrevoke' , 'prvdrop' ] , description : 'select the parameter for which automation needs to be performed')
+         string(name: 'prv_user_name', defaultValue: '', description: 'Enter IAM user name which needs to be created, only for user-role-creation or user-policy apply')
+         string(name: 'db_name', defaultValue: '', description: 'Enter the db name')
+
+   
+    }
+   stages {
+      stage('Install Ansible'){
+            steps{
+        script{  
+                 sh """
+                apt-get update
+                    apt-get install -y ansible
+           
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                   
+                    """
+            }
+        }
+     }
+     
+     
+
+       stage('Creating AD prvuser') {
+            when { expression { params.Automation == 'prvadd' && params.prv_user_name.contains('R1-CORE')  } }
+            steps {
+                script {
+                    // Replace placeholder in SQL file with Jenkins parameter value
+                    def sqlFilePath = './prvactiveup.sql'
+                    def prv_user_name = params.prv_user_name
+                    def db_name = params.db_name
+                    sh "sed -i 's/prv_user_name/$prv_user_name/g' ${sqlFilePath}"
+                    sh "sed -i 's/db_name/$db_name/g' ${sqlFilePath}"
+                    sh "cat prvactiveup.sql"
+                    sh '''                 
+                            ansible-playbook -vvv -i wininventory mssql.yml \
+                             -e "username=\\"${username}\\""\
+                             -e "password=\\"${password}\\""\
+                             -e "db_name=\\"${db_name}\\""
+                    '''
+                }
+            }
+        }
+ 
+        stage('Creating DB prvuser') {
+            when { expression { params.Automation == 'prvadd' && !params.prv_user_name.contains('R1-CORE') } }
+            steps {
+                script {
+                    // Replace placeholder in SQL file with Jenkins parameter value
+                    def sqlFilePath = './prvaddup.sql'
+                    def prv_user_name = params.prv_user_name
+                    def db_name = params.db_name
+                    sh "sed -i 's/prv_user_name/$prv_user_name/g' ${sqlFilePath}"
+                    sh "sed -i 's/db_name/$db_name/g' ${sqlFilePath}"
+            
+                    sh "cat prvaddup.sql"
+                    sh '''                 
+                            ansible-playbook -vvv -i wininventory mssql-add.yml \
+                             -e "username=\\"${username}\\""\
+                             -e "password=\\"${password}\\""\
+                             -e "db_name=\\"${db_name}\\""
+
+                    '''
+                }
+            }
+        }
+        
+
+
+        stage('Revoking prvusr') {
+            when { expression { params.Automation == 'prvrevoke'} }
+            steps {
+                script {
+                    // Replace placeholder in SQL file with Jenkins parameter value
+                    def sqlFilePath = './prvrevoke.sql'
+                    def prv_user_name = params.prv_user_name
+                    def db_name = params.db_name
+                    sh "sed -i 's/prv_user_name/$prv_user_name/g' ${sqlFilePath}"
+                    sh "sed -i 's/db_name/$db_name/g' ${sqlFilePath}"
+                    sh "cat prvrevoke.sql"
+                    sh '''                 
+                            ansible-playbook -vvv -i wininventory mssql-revoke.yml \
+                             -e "username=\\"${username}\\""\
+                             -e "password=\\"${password}\\""\
+                             -e "db_name=\\"${db_name}\\""
+
+                    '''
+                }
+            }
+        }
+
+
+      stage('Removing prvuser') {
+            when { expression { params.Automation == 'prvdrop' } }
+            steps {
+                script {
+                    // Replace placeholder in SQL file with Jenkins parameter value
+                    def sqlFilePath = './prvdrop.sql'
+                    def prv_user_name = params.prv_user_name
+                    def db_name = params.db_name
+                    sh "sed -i 's/prv_user_name/$prv_user_name/g' ${sqlFilePath}"
+                    sh "sed -i 's/db_name/$db_name/g' ${sqlFilePath}"
+                    sh "cat ./prvdrop.sql"
+                    sh '''                 
+                            ansible-playbook -vvv -i wininventory mssql-drop.yml \
+                             -e "username=\\"${username}\\""\
+                             -e "password=\\"${password}\\""\
+                             -e "db_name=\\"${db_name}\\""
+
+                    '''
+ 
+                }
+            }
+        }
+     
+     
+     
+   }
+   
+}
+     

@@ -1,0 +1,92 @@
+pipeline{
+
+     agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'
+	     args '-v $WORKSPACE:/var/tmp'
+	     args '-u root'
+	     reuseNode true
+
+       }
+   }
+   
+   	environment {
+        Linux_host = credentials('Windows')
+        username = "${Linux_host_USR}"
+        password = "${Linux_host_PSW}"
+    }
+
+   stages {
+      stage('Install Ansible'){
+            steps{
+		         script{  
+                 sh """
+                    apt-get install -y ansible
+                    pip install boto3
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                    python3 -m pip install boto3
+		              pwd
+		              ls -ltr
+                    """
+            }
+	    }
+     }
+
+
+
+        stage('precheck-info') {
+            when { expression { return fileExists ('am_precheck_passed ') } }
+            steps {
+                script {
+                                
+                        sh 'ansible-playbook -i am_precheck_passed  -e  "username=$username" -e "password=$password"  windows_precheckinfo.yml'
+			sh 'ansible-playbook -i am_precheck_passed  -e  "username=$username" -e "password=$password"  remotestore-winin.yml'
+            }
+            }
+            }
+
+         stage('Trigger patching') {
+            when { expression { return fileExists ('am_precheck_passed ') } }
+            steps {
+                script {
+                    build job: "Patching", wait: true
+
+            }
+            }
+            }
+            
+            
+        stage('precheck-inforem') {
+        when { expression { return fileExists ('diskrempassed') } }
+            steps {
+                script {
+                                
+                        sh 'ansible-playbook -i diskrempassed -e  "username=$username" -e "password=$password" precheck_info.yml'
+			sh 'ansible-playbook -i common_entries -e  "username=$username" -e "password=$password"  inforemote.yml'
+			
+			
+            }
+            }
+            }
+
+         stage('Trigger patchingrem') {
+            when { expression { return fileExists ('diskrempassed') } }
+            steps {
+                script {
+                    build job: "Patching", wait: true
+
+            }
+            }
+            }
+            
+            
+                
+
+            
+}
+}

@@ -1,0 +1,10 @@
+---        
+        
+- name: Available patches from command module
+  shell:
+     echo "incident raised" 
+  register: space
+  ignore_errors: true
+  
+- debug:
+    msg: "{{ space }}"

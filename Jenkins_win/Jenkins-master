@@ -1,0 +1,72 @@
+pipeline{
+   agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'
+	     args '-v $WORKSPACE:/var/tmp'
+	     args '-u root'
+
+       }
+   }   
+   
+   stages {
+	
+      stage('Install Ansible'){
+            steps{
+		script{  
+                 sh """
+                    apt-get install -y ansible
+                    pip install boto3
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                    python3 -m pip install boto3
+		    pwd
+		    ls -ltr
+                    """
+            }
+	    }
+     }
+   
+        stage('Reachability check') {
+            steps {
+                script {
+			
+                          sh '''
+				  	
+                                pwd
+                                ls -lart
+                                ansible-playbook -i inventory pingtest.yml
+				ansible-playbook -i inventory remotestore.yml
+                              '''
+            }
+            }
+            }
+	   
+            
+        stage('Collecting unreachable host') {
+            steps {
+                script {
+                          sh '''
+                                whoami
+				uname -a
+				hostname
+                                pwd
+                                ls -lart
+                                if [ -f /jenkins_home/2faffecb/workspace/terraform/SRE-SNOW-Integration/patching-master/reachable_hosts ]
+                                then
+                                echo "reachable hosts captured"
+                                else
+                                echo "proceeding"
+                                fi
+                              '''
+            }
+            }
+            }
+        
+        
+}
+}
+

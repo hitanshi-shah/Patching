@@ -1,0 +1,135 @@
+pipeline{
+   agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker-machine'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'  
+         args '-v $WORKSPACE:/var/tmp'
+         args '-u root'
+       }
+   }
+   
+    environment {
+        Linux_host = credentials('sqllogin1')
+        username = "${Linux_host_USR}"
+        password = "${Linux_host_PSW}"
+        db_host = credentials('dbpass')
+        db_password = "${db_host_PSW}"
+        GIT_TOKEN = credentials('sashangit')
+        sybase_host = credentials('sybasedb')
+        sybase_pass = "${sybase_host_PSW}"
+
+ 
+    }
+   
+    parameters {
+   
+         choice(name: 'Automation' , choices: ['prvadd' , 'prvrevoke' , 'prvdrop' ] , description : 'select the parameter for which automation needs to be performed')
+         string(name: 'prv_user_name', defaultValue: '', description: 'Enter IAM user name which needs to be created, only for user-role-creation or user-policy apply')
+         string(name: 'db_name', defaultValue: '', description: 'Enter the db name, in which the user needs to be created')
+         string(name: 'server_name', defaultValue: '', description: 'Enter the server name')
+
+  
+    }
+   
+   
+   stages {
+      stage('Install Ansible'){
+            steps{
+        script{  
+                 sh """
+                apt-get update
+                    apt-get install -y ansible
+           
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                   
+                    """
+            }
+        }
+     }
+ 
+ 
+        stage('Creating prvuser') {
+            when { expression { params.Automation == 'prvadd'} }
+            steps {
+                script {
+                    // Replace placeholder in SQL file with Jenkins parameter value
+                    def sqlFilePath = './sybase.sql'
+                    def prv_user_name = params.prv_user_name
+                    def db_name = params.db_name
+                    def server_name = params.server_name
+                    sh "sed -i 's/prv_user_name/$prv_user_name/g' ${sqlFilePath}"
+                    sh "sed -i 's/db_name/$db_name/g' ${sqlFilePath}"
+                    sh "cat sybase.sql"
+                    sh '''                 
+                            ansible-playbook -vvv -i sybase_inventory sybase.yml \
+                             -e "username=\\"${username}\\""\
+                             -e "password=\\"${password}\\""\
+                             -e "dbpass=\\"${db_password}\\""\
+                             -e "server_name=\\"${server_name}\\""\
+                             -e "sybase_pass=\\"${sybase_pass}\\""
+
+                    '''
+                }
+            }
+        }
+        
+
+       stage('Revoking prvuser') {
+            when { expression { params.Automation == 'prvrevoke'  } }
+            steps {
+                script {
+                    // Replace placeholder in SQL file with Jenkins parameter value
+                    def sqlFilePath = './sybase-revoke.sql'
+                    def prv_user_name = params.prv_user_name
+                    def db_name = params.db_name
+                    def server_name = params.server_name
+                    sh "sed -i 's/prv_user_name/$prv_user_name/g' ${sqlFilePath}"
+                    sh "sed -i 's/db_name/$db_name/g' ${sqlFilePath}"
+                    sh "cat sybase-revoke.sql"
+                    sh '''                 
+                            ansible-playbook -vvv -i sybase_inventory sybase-revoke.yml \
+                             -e "username=\\"${username}\\""\
+                             -e "password=\\"${password}\\""\
+                             -e "dbpass=\\"${db_password}\\""\
+                             -e "server_name=\\"${server_name}\\""\
+                             -e "sybase_pass=\\"${sybase_pass}\\""
+
+                    '''
+                }
+            }
+        }
+
+
+       stage('Dropping prvuser') {
+            when { expression { params.Automation == 'prvdrop' } }
+            steps {
+                script {
+                    // Replace placeholder in SQL file with Jenkins parameter value
+                    def sqlFilePath = './sybase-drop.sql'
+                    def prv_user_name = params.prv_user_name
+                    def db_name = params.db_name
+                    def server_name = params.server_name              
+                    sh "sed -i 's/prv_user_name/$prv_user_name/g' ${sqlFilePath}"
+                    sh "sed -i 's/db_name/$db_name/g' ${sqlFilePath}"
+                    sh "cat sybase-drop.sql"
+                    sh '''                 
+                            ansible-playbook -vvv -i sybase_inventory sybase-drop.yml \
+                             -e "username=\\"${username}\\""\
+                             -e "password=\\"${password}\\""\
+                             -e "dbpass=\\"${db_password}\\""\
+                             -e "server_name=\\"${server_name}\\""\
+                             -e "sybase_pass=\\"${sybase_pass}\\""
+                    '''
+                }
+            }
+        }
+
+          
+   }
+   
+}
+     

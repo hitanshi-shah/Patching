@@ -1,0 +1,150 @@
+pipeline{
+     agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker-machine'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'
+	     args '-v $WORKSPACE:/var/tmp'
+	     args '-u root'
+
+       }
+   }
+	environment {
+        Linux_host = credentials('Linux')
+        username = "${Linux_host_USR}"
+        password = "${Linux_host_PSW}"
+	GIT_TOKEN = credentials('sashangit')
+
+    }
+    
+   stages {
+      stage('Install Ansible'){
+            steps{
+		script{  
+                 sh """
+                    apt-get install -y ansible
+                    pip install boto3
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                    python3 -m pip install boto3
+		    pwd
+		    ls -ltr
+                    """
+            }
+	    }
+     }
+     
+     
+         stage('Satellitecheck') {
+            steps {
+                script {
+                                
+                                sh '''
+                                 ansible-playbook -i ansible_inventory.ini  -e  "username=$username" -e "password=$password" subscription-manager.yml
+                                '''
+            }
+            }
+            }
+    
+       
+        stage('diskcheck') {
+            steps {
+                script {
+                                
+                                sh '''
+                                 ansible-playbook -i Subscriptionpassed_hosts -e  "username=$username" -e "password=$password" diskclear.yml
+                                '''
+            }
+            }
+            }
+        
+        
+         stage('checksecurity_patches') {
+            steps {
+                script {
+                                
+                                sh '''
+                                 ansible-playbook -i disk_precheckpass -e  "username=$username" -e "password=$password" checksecurity_patches.yml
+				 ls -lart
+                                '''
+            }
+            }
+            }
+            
+            
+         stage('precheck-info') {
+            when { expression { return fileExists ('rhsa_precheckpass') } }
+            steps {
+                script {
+                                
+                        sh 'ansible-playbook -i rhsa_precheckpass -e  "username=$username" -e "password=$password"  precheck_info.yml'
+			                               
+            }
+            }
+            }          
+            
+            
+        stage('Patching') {
+            when { expression { return fileExists ('rhsa_precheckpass') } }
+            steps {
+                script {
+                          sh '''
+                                echo "proceeding to update"
+                                ansible-playbook -i rhsa_precheckpass -e  "username=$username" -e "password=$password" rhel_patch.yml
+                             '''
+            }
+                    }
+            }          
+            
+            
+        stage('Post-Pingtest') {
+        when {expression { return fileExists ('patching') }}
+            steps {
+                script {
+                          
+                                sh ' ansible-playbook -i patching -e  "username=$username" -e "password=$password" postping.yml'
+            }       
+            }
+            }
+            
+        stage('Security-patches') {
+        when {expression { return fileExists ('postreachable_hosts') }}
+            steps {
+                script {
+                          
+                                sh 'ansible-playbook -i postreachable_hosts -e  "username=$username" -e "password=$password" checksecurity_patches-post.yml'
+                      
+
+                }                   
+            }
+            }    
+            
+        stage('Postcheck-info') {
+        when {expression { return fileExists ('postreachable_hosts') }}            
+            steps {
+                script {
+                                
+                                sh '''
+                                ansible-playbook -i postreachable_hosts -e  "username=$username" -e "password=$password" postcapture.yml
+                                '''
+            }
+            }
+            }
+            
+        
+        stage('Report generation') {
+            steps { 
+                    sh 'ansible-playbook -i ansible_inventory.ini  -e  "username=$username" -e "password=$password" reportlatest.yml'
+		    sh 'ls -lart /tmp'
+		    sh 'cp -p /tmp/job_report.html .'
+		    sh 'ansible-playbook -i ansible_inventory.ini -e  "username=$username" -e "password=$password" -e "GIT_TOKEN=$GIT_TOKEN" remotestore.yml'
+		    
+            }
+                    
+        }           
+            
+	       
+    }   
+}

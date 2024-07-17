@@ -1,0 +1,99 @@
+pipeline{
+   agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker-machine'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'
+	     args '-u root'
+       }
+   }
+   
+   
+parameters {
+  string(name: 'QID', defaultValue: '', description: 'Enter QID to validate')
+  string(name: 'hostname', defaultValue: '', description: 'Enter hostname to validate')
+
+}      
+   
+   	environment {
+        Linux_host = credentials('Win_user')
+        username = "${Linux_host_USR}"
+        password = "${Linux_host_psw}"
+	GIT_TOKEN = credentials('sashangit')
+	qualys = credentials('qualysid')
+	qualys_username = "${qualys_USR}"
+        qualys_password = "${qualys_psw}"
+	
+
+    }
+    
+   stages {
+      stage('Install Ansible'){
+            steps{
+		script{  
+                 sh """
+		    apt-get update
+                    apt-get install -y ansible
+		    pip install openpyxl
+                    pip install boto3
+		    pip install azure-identity
+		    pip install pandas
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                    python3 -m pip install boto3
+		  apt-get install -y apt-transport-https curl
+		  apt-get install curl && curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+		  az --version
+	                   """
+            }
+	    }
+     }
+     
+     
+/*            stage('Reachability check') {
+            steps {
+                script {
+                          sh '''
+			     ansible-playbook -i am_precheck_passed -e  "username=$username" -e "password=$password" report-latest-win.yml
+			     ls -lart
+			     bash csv_merge.sh
+			     cat winmerged.csv >> report.csv
+			     ansible-playbook -vvv -i am_precheck_passed -e  "username=$username" -e "password=$password" report-win-fetch.yml
+			     ansible-playbook  -i inventory_windows -e  "username=$username" -e "password=$password"  -e "GIT_TOKEN=$GIT_TOKEN" remotestore_test.yml
+
+			     '''
+            }
+            }
+            }*/
+	    
+	    
+	   stage('Reachability check') {
+            steps {
+                script {
+                        def QID = params.QID
+			  sh '''
+				bash qualyscheck.sh ${QID} ${hostname} ${qualys_username} ${qualys_password}
+	'''
+	   }
+	   }
+	   }
+	   
+	  /* stage('az connect') {
+            steps {
+                script {
+
+                          sh '''
+		  	    az login --service-principal --username "0f3174b7-f990-4fa4-bce4-e771213783f6" --password "C_w8Q~GEHVceypZyLxOe3kS2aqVEWXM59LQR~aCP" --tenant "9b893b67-6443-4d66-89db-071299e7a04d" 
+			    az account set --subscription "754f0afe-9ffe-4698-9d59-ed64f732e5ab"
+			    az group list
+			'''
+			
+	   }
+	   }
+	   }*/
+   }
+    
+}
+     

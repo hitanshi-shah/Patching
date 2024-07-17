@@ -1,0 +1,57 @@
+---
+- name: Check number of available security patches
+  hosts: all
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: 
+    ansible_password: 
+    
+  tasks:
+    - name: Finding available security patches
+      block:
+        - ping:
+          register: rhsa_check
+          ignore_errors: true
+      always:
+
+        - name: Available patches from command module
+          shell:
+            "yum updateinfo list sec | grep -i RHSA | wc -l"
+          register: space
+          ignore_errors: true
+
+        - name: set fact
+          set_fact:
+            space_available: "{{space.stdout | int}}"
+
+
+        - name: write pass details
+          shell:
+          #rm -rf /home/ubuntu/Ansible_plays/pre_patch/remediation.txt
+            echo "{{ inventory_hostname }}" >> rhsa_precheckpass
+          when: space_available  > "0"
+          delegate_to: localhost
+
+        - debug:
+              msg: precheckpass file created
+          when: space_available  > "0"
+
+        - name: write RHSA details
+          shell:
+          #rm -rf /home/ubuntu/Ansible_plays/pre_patch/precheckpass.txt
+            echo "{{ inventory_hostname}}" >> rhsa_precheckfail
+          when: space_available  == "0"
+          delegate_to: localhost
+          
+      - name: Include remediation role
+        include_role:
+            name: aig_patching_automation
+            tasks_from: rhsaremediation.yml
+        when: space_available  == "0"          
+
+      - name: Set remediation_required to true if the condition is met
+        set_fact:
+             remediation_required: true
+        when: space_available  == "0" 
