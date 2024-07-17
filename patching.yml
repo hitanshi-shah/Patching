@@ -1,0 +1,48 @@
+---
+- hosts: all
+  become: yes
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    
+  tasks:
+  
+    - name: List packages ready for update
+      yum:
+         list: updates
+         disablerepo: "*"
+      register: result
+      
+   # - name: Install system updates for RHEL systems
+   #   shell: yum update -y
+
+       #when:
+       # - ansible_os_family == "RedHat"
+
+    - name: "Comparing last kernel and running kernel"
+      shell:  rpm -q --last kernel  | head -1 | awk '{ print $1}' | sed 's/kernel-//g'
+      register: LAST_KERNEL
+    
+    - name: "Fetching kernel version"
+      shell:  rpm -q --last kernel  | head -1 | awk '{ print $1}' | sed 's/kernel-//g' | cut -d '-' -f2 | cut -d '.' -f2
+      register: version
+
+
+    - name: set version fact
+      set_fact:
+        version_available: "{{version.stdout | int}}"
+
+    - name: write detailslocal
+      shell:
+        echo "{{ inventory_hostname}}" >> /tmp/patch
+      when: version_available  != "0"
+
+
+        #    - name: write detailslocal
+        # shell:
+        #echo "{{ inventory_hostname}}" >> /tmp/patch
+        # when: version_available  == "25"
+

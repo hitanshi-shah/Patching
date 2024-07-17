@@ -1,0 +1,14 @@
+---
+- name: List of running processes
+  hosts: windows
+  gather_facts: no  
+
+  tasks:
+    - name: Get list of running processes
+      win_shell: Get-Process | Select-Object Name, Id, Path, Description
+      register: running_processes
+
+    - name: Display running processes
+      debug:
+        var: running_processes.stdout_lines
+

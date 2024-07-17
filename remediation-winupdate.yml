@@ -1,0 +1,30 @@
+---
+- name: Get Firewall Service Registry Information from Windows VM
+  hosts: windows
+  gather_facts: no
+  
+
+  vars:
+    ansible_connection: winrm
+    ansible_user: 
+    ansible_password: 
+    ansible_winrm_server_cert_validation: ignore
+    ansible_port: 5985
+
+
+  tasks:
+  
+     - name: Start Windows Update Service
+       win_service:
+          name: wuauserv
+          start_mode: auto  
+          state: stopped
+        
+     - name: Precheck playbook
+       include_tasks: Windows_Update_service.yml
+      
+     - name: Raise SNOV ticket
+       shell:
+          echo "Raise SNOW ticket"
+       when: windows_update_service_info.state == 'stopped'
+

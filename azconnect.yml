@@ -1,0 +1,22 @@
+---
+- name: Manage Windows Server through Azure Arc
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Install Azure Modules for Ansible
+      pip:
+        name: 'ansible[azure]'
+        state: present
+
+    - name: Authenticate with Azure using Azure CLI
+      command: |
+        az account list
+        az login --service-principal --username "a1d436b5-120a-4293-a907-f5fbb07fae18" --password "_~C8Q~E2S3szC.TGhSHd5VR3NjX2vxwiNl.PWbZm" --tenant "9b893b67-6443-4d66-89db-071299e7a04d" 
+      register: az_login_result
+      ignore_errors: yes
+
+    - name: Fail the playbook if Azure login fails
+      fail:
+        msg: "Azure login failed"
+      when: az_login_result.rc != 0
+

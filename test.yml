@@ -1,0 +1,16 @@
+- name: test
+  hosts: localhost
+  gather_facts: no
+#  ignore_unreachable: no
+
+    
+    
+  tasks:
+     - name: write details
+       shell: |
+            pwd
+            ls -lart 
+       register: server_avail
+            
+     - debug:
+          msg: "{{ server_avail }}" 

@@ -1,0 +1,45 @@
+---
+- name: Get Disk Information from Windows VM
+  hosts: windows
+  gather_facts: no
+  vars:
+    ansible_connection: winrm
+    ansible_user: 
+    ansible_password: 
+    ansible_winrm_server_cert_validation: ignore
+    ansible_port: 5985
+    
+  tasks:
+    - name: Execute PowerShell Command
+      win_shell: |
+        $SysVolume = Get-Volume | Where-Object { $_.DriveLetter -eq $env:SystemDrive[0] }
+        $SysVolume | ConvertTo-Json
+      register: disk_info
+
+    - name: Convert disk_info.stdout_lines to integer
+      set_fact:
+        disk_info_value: "{{ disk_info.stdout_lines[0] | default(0) | int }}"
+        
+    - debug:
+        msg: "{{ disk_info_value }}"
+
+    - name: Set variable for disk_info > 95
+      set_fact:
+        disk_info_gt_95: "{{ disk_info_value }}"
+      when: disk_info_value > "95"
+
+    - name: Set variable for disk_info < 95
+      set_fact:
+        disk_info_lt_95: "{{ disk_info_value }}"
+      when: disk_info_value < "95"
+
+    - name: Display Disk Information (greater than 95)
+      debug:
+        var: disk_info_gt_95
+      when: disk_info_value > "95"
+
+    - name: Display Disk Information (less than 95)
+      debug:
+        var: disk_info_lt_95
+      when: disk_info_value < "95"
+    

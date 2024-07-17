@@ -1,0 +1,75 @@
+---
+- name: Check and Clear C Drive Space on Windows
+  hosts: all
+  gather_facts: yes
+  
+  vars:
+    ansible_connection: winrm
+    ansible_user:  "{{username}}"
+    ansible_password:  "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_port: 5985
+
+  tasks:
+    - name: Get C Drive Space
+      win_shell: |
+        $driveInfo = Get-WmiObject -Class Win32_LogicalDisk -Filter "DeviceID='C:'"
+        [math]::Round(($driveInfo.FreeSpace / $driveInfo.Size) * 100, 2)
+      register: c_drive_space
+      changed_when:
+
+    - name: Display C Drive Space
+      debug:
+        msg: "C Drive Space: {{ c_drive_space.stdout }}%"
+        
+#    - name: Clear Temp Folders if C Drive Space > 80%
+#      win_shell: |
+#        if ({{ c_drive_space.stdout }} -gt 20) {
+#          Remove-Item -Path C:TEMP -Force -Recurse
+#        }
+#      when: c_drive_space.stdout|int > 20        
+
+    - name: Recheck C Drive Space
+      win_shell: |
+        $driveInfo = Get-WmiObject -Class Win32_LogicalDisk -Filter "DeviceID='C:'"
+        [math]::Round(($driveInfo.FreeSpace / $driveInfo.Size) * 100, 2)
+      register: recheck_space
+      changed_when: false  
+
+    - name: Display Rechecked C Drive Space
+      debug:
+        msg: "Rechecked C Drive Space: {{ recheck_space.stdout }}%"
+
+    - name: Raise ServiceNow Incident if C Drive Space Still High
+      debug:
+        msg: "ServiceNow incident raised: C Drive space on {{ inventory_hostname }} is still high ({{ recheck_space.stdout }}%)."
+      when: recheck_space.stdout|int > 30
+
+
+    - name: Save Successful Host IP Addresses      
+      win_shell: |
+           echo "{{ inventory_hostname}}" >> passed_disk_{{ inventory_hostname}}
+      when: recheck_space.stdout|int < 30
+      
+      
+    - name: Save Successful Host IP Addresses      
+      win_shell: |
+           echo "{{ inventory_hostname}}" >> failed_disk_{{ inventory_hostname}}
+      when: recheck_space.stdout|int > 30
+
+    - name: Fetch files from remote host
+      fetch:
+        src: passed_disk_{{ inventory_hostname}}
+        dest: ./  
+        flat: yes
+      when: recheck_space.stdout|int < 30
+
+
+    - name: Fetch files from remote host
+      fetch:
+        src: failed_disk_{{ inventory_hostname}}*
+        dest: ./  
+        flat: yes
+      when: recheck_space.stdout|int > 30
+
+

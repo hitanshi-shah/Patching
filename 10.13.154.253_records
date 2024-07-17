@@ -1,0 +1,215 @@
+=========== Output of uname -a ============
+Linux tlawosca432401.r1-core.r1.aig.net 3.10.0-1160.108.1.el7.x86_64 #1 SMP Thu Jan 4 14:55:32 EST 2024 x86_64 x86_64 x86_64 GNU/Linux
+=========== Output of cat /etc/redhat-release ============
+Red Hat Enterprise Linux Server release 7.8 (Maipo)
+UNIT FILE                                     STATE   
+tmp.mount                                     disabled
+brandbot.path                                 enabled 
+abrt-ccpp.service                             enabled 
+abrt-oops.service                             enabled 
+abrt-pstoreoops.service                       disabled
+abrt-vmcore.service                           enabled 
+abrt-xorg.service                             enabled 
+abrtd.service                                 enabled 
+acpid.service                                 enabled 
+amazon-cloudwatch-agent.service               enabled 
+amazon-ssm-agent.service                      enabled 
+arp-ethers.service                            disabled
+auditd.service                                enabled 
+autovt@.service                               enabled 
+besclient.service                             enabled 
+blk-availability.service                      disabled
+centrify-ldapproxy.service                    enabled 
+centrifydc.service                            enabled 
+chef-client.service                           enabled 
+chef-manage-runsvdir-start.service            enabled 
+chrony-wait.service                           disabled
+chronyd.service                               enabled 
+cloud-config.service                          enabled 
+cloud-final.service                           enabled 
+cloud-init-local.service                      enabled 
+cloud-init.service                            enabled 
+console-getty.service                         disabled
+console-shell.service                         disabled
+cpupower.service                              disabled
+crond.service                                 enabled 
+dbus-org.freedesktop.nm-dispatcher.service    enabled 
+debug-shell.service                           disabled
+ebtables.service                              disabled
+falcon-sensor.service                         enabled 
+firewalld.service                             disabled
+getty@.service                                enabled 
+instana-agent.service                         enabled 
+iprdump.service                               disabled
+iprinit.service                               disabled
+iprupdate.service                             disabled
+irqbalance.service                            enabled 
+kdump.service                                 enabled 
+microcode.service                             enabled 
+NetworkManager-dispatcher.service             enabled 
+NetworkManager-wait-online.service            enabled 
+NetworkManager.service                        enabled 
+ntpd.service                                  enabled 
+ntpdate.service                               disabled
+plymouth-halt.service                         disabled
+plymouth-kexec.service                        disabled
+plymouth-poweroff.service                     disabled
+plymouth-quit-wait.service                    disabled
+plymouth-quit.service                         disabled
+plymouth-read-write.service                   disabled
+plymouth-reboot.service                       disabled
+plymouth-start.service                        disabled
+postfix.service                               enabled 
+private_chef-runsvdir-start.service           enabled 
+puppet.service                                enabled 
+pxp-agent.service                             disabled
+qemu-guest-agent.service                      enabled 
+qualys-cloud-agent.service                    enabled 
+rdisc.service                                 disabled
+rhel-autorelabel-mark.service                 enabled 
+rhel-autorelabel.service                      enabled 
+rhel-configure.service                        enabled 
+rhel-dmesg.service                            enabled 
+rhel-domainname.service                       enabled 
+rhel-import-state.service                     enabled 
+rhel-loadmodules.service                      enabled 
+rhel-readonly.service                         enabled 
+rhsm-facts.service                            disabled
+rhsm.service                                  disabled
+rhsmcertd.service                             enabled 
+rsyncd.service                                disabled
+rsyslog.service                               enabled 
+serial-getty@.service                         disabled
+splunk.service                                enabled 
+SplunkForwarder.service                       enabled 
+sshd.service                                  enabled 
+svnserve.service                              disabled
+systemd-bootchart.service                     disabled
+systemd-nspawn@.service                       disabled
+systemd-readahead-collect.service             enabled 
+systemd-readahead-done.service                indirect
+systemd-readahead-drop.service                enabled 
+systemd-readahead-replay.service              enabled 
+taniumclient.service                          enabled 
+tcsd.service                                  disabled
+trace-cmd.service                             disabled
+tuned.service                                 enabled 
+wpa_supplicant.service                        disabled
+rsyncd.socket                                 disabled
+sshd.socket                                   disabled
+ctrl-alt-del.target                           disabled
+default.target                                enabled 
+halt.target                                   disabled
+iprutils.target                               disabled
+kexec.target                                  disabled
+machines.target                               disabled
+multi-user.target                             enabled 
+poweroff.target                               disabled
+reboot.target                                 disabled
+remote-cryptsetup.target                      disabled
+remote-fs.target                              enabled 
+rescue.target                                 disabled
+runlevel0.target                              disabled
+runlevel1.target                              disabled
+runlevel2.target                              enabled 
+runlevel3.target                              enabled 
+runlevel4.target                              enabled 
+runlevel6.target                              disabled
+chrony-dnssrv@.timer                          disabled
+fstrim.timer                                  disabled
+systemd-readahead-done.timer                  indirect
+
+271 unit files listed.
+=========== Output of df -h ============
+Filesystem      Size  Used Avail Use% Mounted on
+devtmpfs        7.7G     0  7.7G   0% /dev
+tmpfs           7.7G   44K  7.7G   1% /dev/shm
+tmpfs           7.7G   25M  7.7G   1% /run
+tmpfs           7.7G     0  7.7G   0% /sys/fs/cgroup
+/dev/nvme0n1p2   50G   16G   34G  32% /
+tmpfs           1.6G     0  1.6G   0% /run/user/1318745140
+tmpfs           1.6G     0  1.6G   0% /run/user/1318762111
+tmpfs           1.6G     0  1.6G   0% /run/user/1317687384
+=========== Output of cat /etc/fstab ============
+
+#
+# /etc/fstab
+# Created by anaconda on Tue Feb 25 16:17:03 2020
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk'
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+#
+UUID=5a000634-a1fc-467d-8ef4-5fcf5dbc6033 /                       xfs     defaults        0 0
+2
+41
+1
+UNIT SUB
+abrt-ccpp.service exited
+abrt-oops.service running
+abrtd.service running
+acpid.service running
+amazon-cloudwatch-agent.service running
+amazon-ssm-agent.service running
+auditd.service running
+besclient.service running
+centrify-ldapproxy.service running
+centrifydc.service running
+chef-client.service running
+chef-manage-runsvdir-start.service running
+cloud-config.service exited
+cloud-final.service exited
+cloud-init-local.service exited
+cloud-init.service exited
+crond.service running
+dbus.service running
+● failed
+falcon-sensor.service running
+getty@tty1.service running
+instana-agent.service running
+irqbalance.service running
+kdump.service exited
+kmod-static-nodes.service exited
+network.service exited
+NetworkManager-wait-online.service exited
+NetworkManager.service running
+ntpd.service running
+polkit.service running
+postfix.service running
+private_chef-runsvdir-start.service running
+puppet.service running
+qualys-cloud-agent.service running
+rhel-dmesg.service exited
+rhel-domainname.service exited
+rhel-import-state.service exited
+rhel-readonly.service exited
+rhnsd.service running
+rhsmcertd.service running
+rsyslog.service running
+serial-getty@ttyS0.service running
+● failed
+● failed
+sshd.service running
+systemd-hostnamed.service running
+systemd-journal-flush.service exited
+systemd-journald.service running
+systemd-logind.service running
+systemd-random-seed.service exited
+systemd-remount-fs.service exited
+systemd-sysctl.service exited
+systemd-tmpfiles-setup-dev.service exited
+systemd-tmpfiles-setup.service exited
+systemd-udev-trigger.service exited
+systemd-udevd.service running
+systemd-update-utmp.service exited
+systemd-user-sessions.service exited
+systemd-vconsole-setup.service exited
+taniumclient.service running
+tuned.service running
+● failed
+ 
+LOAD whether
+ACTIVE high-level
+SUB low-level
+ 
+62 listed.
+To installed

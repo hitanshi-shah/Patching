@@ -1,0 +1,15 @@
+---
+- name: Get LastBootUpTime
+  hosts: windows
+  gather_facts: no
+
+  tasks:
+    - name: Get LastBootUpTime using PowerShell
+      win_shell: |
+        Get-CimInstance Win32_OperatingSystem | Select-Object LastBootUpTime
+      register: boot_time_output
+
+    - name: Display LastBootUpTime
+      debug:
+        var: boot_time_output.stdout_lines
+

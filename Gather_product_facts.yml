@@ -1,0 +1,14 @@
+---
+- name: Gather product facts
+  hosts: windows
+  gather_facts: no  
+
+  tasks:
+    - name: Gather product facts on Windows
+      win_product_facts:
+      register: product_facts
+
+    - name: Display Windows license status
+      debug:
+        var: product_facts
+

@@ -1,0 +1,23 @@
+---
+- name: Get Firewall Service Registry Information from Windows VM
+  hosts: windows
+  gather_facts: no
+  become: yes
+  become_user: Administrator
+  become_method: runas
+  port: 5985
+
+
+  vars:
+    ansible_connection: winrm
+    ansible_user: 
+    ansible_password: 
+    ansible_winrm_server_cert_validation: ignore
+
+  tasks:
+  
+     - name: Start Windows Update Service
+       win_service:
+        name: HealthService
+        start_mode: auto  
+        state: started

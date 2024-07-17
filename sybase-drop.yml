@@ -1,0 +1,41 @@
+---
+- name: check reachable hosts
+  hosts: all
+  gather_facts: yes
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    dbpass: "{{dbpass}}"
+    server_name: "{{server_name}}"
+    sybase_pass: "{{sybase_pass}}"
+
+    
+  
+  tasks:
+    - copy:
+        src: ./sybase-drop.sql
+        dest: '/tmp'
+        remote_src: no
+       
+    - copy:
+        src: ./sybasedrop.sh
+        dest: '/tmp'
+        remote_src: no
+        
+       
+    - name: Change permissions of sybase-drop.sql file
+      shell: chmod 777 /tmp/sybase-drop.sql /tmp/sybasedrop.sh
+             
+       
+    - name: Run SQL Query
+      shell: bash /tmp/sybasedrop.sh {{ ansible_password }} {{ sybase_pass }} {{ dbpass }} {{ server_name }}
+      register: sybase_output
+      
+
+    - name: Display SQL Query Output
+      debug:
+        var: sybase_output.stdout_lines
+ 

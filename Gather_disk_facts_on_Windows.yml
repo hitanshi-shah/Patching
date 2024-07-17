@@ -1,0 +1,14 @@
+---
+- name: Gather disk facts on Windows
+  hosts: windows
+  gather_facts: no  
+
+  tasks:
+    - name: Gather disk facts on Windows
+      win_disk_facts:
+      register: disk_facts
+      
+    - name: Display disk volume information
+      debug:
+        var: disk_facts
+

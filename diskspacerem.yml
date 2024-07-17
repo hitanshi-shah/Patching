@@ -1,0 +1,33 @@
+---
+- name: Find High Disk Usage Partitions and Get 'du -sh *' Output
+  hosts: defaults
+  become: yes
+
+  tasks:
+    - name: Get Disk Usage
+      command: df -h
+      register: disk_usage_output
+
+
+    - name: Display High Usage Partitions
+      debug:
+        var: disk_usage_output
+
+    - name: Filter Partitions with High Disk Usage
+      set_fact:
+          high_usage_partitions: "{{ disk_usage_output.stdout_lines[1:] | selectattr('1', 'int', '>', 5) }}"
+
+    - name: Display High Usage Partitions
+      debug:
+        var: high_usage_partitions
+
+    - name: Get 'du -sh *' Output for High Usage Partitions
+      shell: du -sh /{{ item }}/*
+      register: du_output
+      with_items: "{{ high_usage_partitions }}" 
+      when: high_usage_partitions | length > 0
+
+
+    - name: Display 'du -sh *' Output for High Usage Partitions
+      debug:
+        var: du_output.results

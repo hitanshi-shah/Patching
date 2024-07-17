@@ -1,0 +1,46 @@
+---
+- name: Get License Details of Windows VM
+  hosts: all
+  gather_facts: yes
+
+  vars:  
+    ansible_connection: winrm
+    ansible_user:  "{{username}}"
+    ansible_password:  "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_port: 5985
+    
+  #ignore_unreachable: yes
+  tasks:
+  
+    - name: Get System Information
+      win_shell: |
+        $lastBootTime = Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object -ExpandProperty LastBootUpTime
+        $memoryUsage = Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object -Property TotalVisibleMemorySize, FreePhysicalMemory
+        $runningServices = Get-Service | Where-Object { $_.Status -eq "Running" } | Select-Object -Property DisplayName, Status
+
+        @{
+            "LastBootTime" = $lastBootTime;
+            "MemoryUsage" = @{
+                "TotalMemory" = $memoryUsage.TotalVisibleMemorySize;
+                "FreeMemory" = $memoryUsage.FreePhysicalMemory;
+            };
+            "RunningServices" = $runningServices;
+        } | ConvertTo-Json      
+      register: system_info  
+        
+        
+    - debug: 
+         var: system_info.stdout
+        
+    - name: Write output json file
+      copy:
+        dest: final_{{ inventory_hostname }}
+        content: "{{ system_info.stdout  | to_json }}"         
+        
+    - name: Fetch files from remote host
+      fetch:
+        src: final_{{ inventory_hostname }}
+        dest: ./  
+        flat: yes
+        ignore_errors: yes  

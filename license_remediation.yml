@@ -1,0 +1,19 @@
+---
+- name: Get License Details of Windows VM
+  hosts: windows
+  gather_facts: no
+  vars:
+    ansible_connection: winrm
+    ansible_user: prvcloudusr
+    ansible_password: aznlS@G6yhXD
+    ansible_winrm_server_cert_validation: ignore
+    ansible_port: 5985
+
+  tasks:
+    - name: Execute PowerShell Command
+      win_shell: |
+        Slmgr /skms kms.aig.net:1688
+        Slmgr /ato
+      register: license_info
+
+

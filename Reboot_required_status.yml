@@ -1,0 +1,13 @@
+---
+- name: Reboot required status
+  hosts: windows
+  gather_facts: no  
+
+  tasks:
+    - name: Check reboot required status
+      win_reboot_pending:
+      register: reboot_status
+    - name: Display reboot required status
+      debug:
+        var: reboot_status
+

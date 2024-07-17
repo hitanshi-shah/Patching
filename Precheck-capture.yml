@@ -1,0 +1,78 @@
+- hosts: all
+  #ignore_unreachable: yes
+  tasks:
+  
+  - name: Read host list from file
+    shell: |
+        ls /var/tmp
+        # cat /var/tmp/unreachable_hosts
+    register: host_list_output
+    delegate_to: localhost
+    
+  - debug:
+      msg: "{{ host_list_output }}"
+
+  - name: Use host list in tasks
+    debug:
+        msg: "Host to work on: {{ item }}"
+    with_lines: "{{ host_list_output.stdout_lines }}"
+    
+  - name: verify server availablity
+    ping:
+    register: avail_detail
+  - name: Capturing of commands output
+    block:
+    - name: Collecting outputs
+      become: yes
+      shell: |
+           echo =========== Output of {{ item }} ============ >> "/tmp/{{ inventory_hostname }}_records"
+           {{ item }} >> "/tmp/{{ inventory_hostname }}_records"
+      with_items:
+      - uname -a
+      - cat /etc/redhat-release
+      - systemctl list-unit-files  | grep -v static
+      - df -h
+      - cat /etc/fstab
+      - cat /proc/stat | awk '/cpu/{printf("%.2f\n"), ($2+$4)*100/($2+$4+$5)}' |  awk '{print $0}'|cut -d . -f1| head -1
+      - free | awk '/Mem/{printf("%.2f"), $3/$2*100}'|cut -d . -f1
+      - free | awk '/Swap/{printf("%.2f"), $3/$2*100}'|cut -d . -f1
+      - iostat 2>/dev/null|awk 'FNR ==4 {printf("%.2f\n"), 100-$6}'|cut -d . -f1
+      - ps aux|grep adclient|grep -v grep|wc -l
+      - systemctl list-units --type service | awk '{print $1" " $4}'
+    rescue:
+      - debug: var=ansible_failed_result.msg
+
+  - name: Copy the remote files
+    become: yes
+    fetch:
+      src: "/tmp/{{ inventory_hostname }}_records"
+      dest: "reports/"
+      flat: yes
+
+  - name: Check if Satrex file exists.
+    stat:
+        path: /home/satrex/.ssh/authorized_keys
+    register: satrex
+
+  - debug:
+      msg: "Satrex file exists"
+    when: satrex.stat.exists
+
+  - name: write details
+    shell:
+          #rm -rf /home/ubuntu/Ansible_plays/pre_patch/precheckpass.txt
+        echo "{{ inventory_hostname}} has starex file" >> /tmp/{{ inventory_hostname }}_records
+    when: satrex.stat.exists
+    delegate_to: localhost
+
+
+  - debug:
+        msg: "Satrex auth file not found"
+    when: satrex.stat.exists == False
+
+  - name: write details
+    shell:
+          #rm -rf /home/ubuntu/Ansible_plays/pre_patch/precheckpass.txt
+            echo "{{ inventory_hostname}} does not have starex entry" >> /tmp/{{ inventory_hostname }}_records
+    when: satrex.stat.exists == False
+    delegate_to: localhost

@@ -1,0 +1,34 @@
+---
+- name: List Linux Hosts with Disk Space > 95%
+  hosts: defaults  
+  gather_facts: yes
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    
+  tasks:
+    - name: Get Disk Space Info
+      shell: df -h | awk 'NR>1 {print $1,$2,$3,$4,$5,$6}'
+      register: disk_space_output
+      changed_when: false  
+
+    - name: Parse Disk Space Info
+      set_fact:
+        disk_space_list: "{{ disk_space_output.stdout_lines}}"
+      when: disk_space_output.stdout_lines | length > 1
+      
+#  - name: Remove Empty Strings from Disk Space List
+#      set_fact:
+#        disk_space_list1: "{{ disk_space_list | map('trim') | select('match', '\\S') | list }}"
+
+    
+    - debug: 
+        var: disk_space_list
+        
+    - name: List Hosts with Disk Space > 95%
+      debug:
+        var: inventory_hostname
+      when: disk_space_list | selectattr('5', 'gt', '20')

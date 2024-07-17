@@ -1,0 +1,373 @@
+---
+- name: Generate an HTML report from jinja template
+  hosts: Windows
+  gather_facts: true
+  vars:
+ 
+    #random settings
+    csv_path: C:\Users\prvsashanmu
+    csv_filename: windreport1.csv
+    #headers: Hostname,Ping,Distro Ver,Kernel Ver,Last Rebooted,Disk Space,Prechecks, Diskcheck, RHSA_Precheck, Patching, RHSA_Postcheck, Link
+    headers: Hostname, Patching group, Prepatch reboot status, Prepatch IVP checks, Postpatch status, Post reboot status, Patch status, Incident, Git link
+    ansible_connection: winrm
+    ansible_user:  'R1-CORE\{{ username }}'
+    ansible_password:  "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_winrm_transport: ntlm
+    ansible_port: 5985 
+ 
+  tasks:
+
+  - name: test connnect
+    block:
+        - ansible.windows.win_ping:
+          register: server_avail
+          timeout: 3
+          ignore_errors: yes
+          
+  - name: Ping set fact
+    set_fact:
+      ping: Passed
+    when: server_avail.failed is false
+
+
+  - name: Ping set fact
+    set_fact:
+      ping: 
+    when: not server_avail.failed is false
+    
+  - name: Ping set fact
+    set_fact:
+      pinged: Failed
+    when: server_availfail.failed is true
+
+  - name: Ping set fact
+    set_fact:
+      pinged:
+    when: not server_availfail.failed is true
+
+
+
+  - name: disk name
+    win_stat:
+      path: C:\Users\prvsashanmu\disk_precheckpass
+    register: precheck_pass_disk
+    ignore_errors: true
+
+  - name: disk set fact
+    set_fact:
+      precheck_pass: Passed
+    when: precheck_pass_disk.stat.exists
+
+  - name: disk set fact
+    set_fact:
+      precheck_pass:
+    when: not precheck_pass_disk.stat.exists
+
+      #- name: disk status
+      #shell:
+      #"[ -f /tmp/remediation ] && echo $?"
+      #register: precheck_pass_disk1
+      #ignore_errors: true
+  - name: disk rem name
+    win_stat:
+      path: C:\Users\prvsashanmu\diskremediation
+    register: precheck_pass_disk1
+    ignore_errors: true
+
+  - name: disk set fact
+    set_fact:
+      precheck_passed: corrected
+    when: precheck_pass_disk1.stat.exists
+
+  - name: disk set fact
+    set_fact:
+      precheck_passed: 
+    when: not precheck_pass_disk1.stat.exists
+    
+
+  - name: disk remfailed name
+    win_stat:
+      path: C:\Users\prvsashanmu\diskremfail
+    register: precheck_pass_disk2
+    ignore_errors: true
+
+  - name: disk set fact
+    set_fact:
+      precheck_passed1: INC created
+    when: precheck_pass_disk2.stat.exists
+
+  - name: disk set fact
+    set_fact:
+      precheck_passed1: 
+    when: not precheck_pass_disk2.stat.exists    
+
+  - name: RHSAPre check
+    win_stat:
+      path: C:\Users\prvsashanmu\rhsa_precheckpass
+    register: precheck_rhsa
+    ignore_errors: true
+
+  - name: RHSA set fact
+    set_fact:
+      precheck_rhsa_status: Passed
+    when: precheck_rhsa.stat.exists
+
+  - name: RHSA set fact
+    set_fact:
+      precheck_rhsa_status:
+    when: not precheck_rhsa.stat.exists
+
+  - name: RHSAPost check
+    win_stat:
+      path: C:\Users\prvsashanmu\postcheckpass
+    register: postcheck_rhsa1
+    ignore_errors: true
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status1: Passed
+    when: postcheck_rhsa1.stat.exists
+    
+  - name: RHSAPost check
+    win_stat:
+      path: C:\Users\prvsashanmu\rhsapostcheckfail
+    register: postcheck_rhsa1
+    ignore_errors: true
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status1: Failed
+    when: postcheck_rhsa1.stat.exists
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status1:
+    when: not postcheck_rhsa1.stat.exists
+  
+  - name: RHSAPost check
+    win_stat:
+      path: C:\Users\prvsashanmu\remediation
+    register: postcheck_rhsa
+    ignore_errors: true
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status: Incident created
+    when: postcheck_rhsa.stat.exists
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status:
+    when: not postcheck_rhsa.stat.exists
+
+
+
+  - name: Patch check
+    win_stat:
+      path: C:\Users\prvsashanmu\patch
+    register: patching
+    ignore_errors: true
+    
+  - name: precheckpass
+    win_stat:
+      path: C:\Users\prvsashanmu\precheckpass
+    register: prepass
+    ignore_errors: true
+
+  - name: prefail
+    win_stat:
+      path: C:\Users\prvsashanmu\precheckfail
+    register: prefail
+    ignore_errors: true
+
+
+  - name: Patch set fact
+    set_fact:
+      prepass_status: Passed
+    when: prepass.stat.exists
+
+  - name: Patch set fact
+    set_fact:
+      prepass_status: 
+    when: not prepass.stat.exists
+    
+
+  - name: Patch set fact
+    set_fact:
+      prefail_status: Failed
+    when: prefail.stat.exists
+
+  - name: Patch set fact
+    set_fact:
+      prefail_status: 
+    when: not prefail.stat.exists
+
+
+  - name: Set link value
+    win_stat:
+      path: C:\Users\prvsashanmu\patchfailed
+    register: linkstat
+    ignore_errors: true
+    
+  - name: Set Link
+    set_fact:
+      linkstat_status: https://github.aig.net/sashanmu/aig_patching_automation/blob/master/LS_precheck_passed_{{ inventory_hostname }}
+    when: linkstat.stat.exists
+   
+  - name: Create a hyperlink
+    set_fact:
+       hyperlink: "<a href='{{ linkstat_status }}'>{{ linkstat_status }}</a>"
+    when: linkstat.stat.exists
+ 
+
+  - name: unSet Link
+    set_fact:
+      hyperlink: N/A
+    when: not linkstat.stat.exists
+    
+  
+  - name: Patch group fact
+    set_fact:
+      patch_group_status: Demogroup
+
+  - name: Post ping check
+    win_stat:
+      path: C:\Users\prvsashanmu\postreachable
+    register: postping
+    ignore_errors: true
+
+  - name: Postping set fact
+    set_fact:
+      postping_status: Passed
+    when: postping.stat.exists
+
+  - name: Postping set fact
+    set_fact:
+      postping_status: 
+    when: not postping.stat.exists
+    
+    
+  - name: Post ping check
+    win_stat:
+      path: C:\Users\prvsashanmu\postunreachable
+    register: postping1
+    ignore_errors: true
+
+  - name: Postping set fact
+    set_fact:
+      postping1_status: Failed
+    when: postping1.stat.exists
+
+  - name: Postping set fact
+    set_fact:
+      postping1_status: 
+    when: not postping1.stat.exists
+
+    
+
+  - name: Post ivp check
+    win_stat:
+      path: C:\Users\prv\postinfo_logs_{{ inventory_hostname }}
+    register: postivp
+    ignore_errors: true
+
+  - name: Post ivp fact
+    set_fact:
+      postivp_status: Passed
+    when: postivp.stat.exists
+
+  - name: Post ivp fact
+    set_fact:
+      postivp_status: 
+    when: not postivp.stat.exists
+    
+    
+
+  - name: Post ivp check
+    win_stat:
+      path: C:\Users\prvsashanmu\postivpfail
+    register: postivp1
+    ignore_errors: true
+
+  - name: Post ivp fact
+    set_fact:
+      postivp1_status: Failed
+    when: postivp1.stat.exists
+
+  - name: Post ivp fact
+    set_fact:
+      postivp1_status: 
+    when: not postivp1.stat.exists
+    
+
+  - name: Patch ivp check
+    win_stat:
+      path: C:\Users\prvsashamu\passed_patch_{{ inventory_hostname }}
+    register: patching
+    ignore_errors: true
+
+  - name: Post ivp fact
+    set_fact:
+      patching_status: Failed 
+    when: patching.stat.exists
+    
+
+  - name: Post ivp fact
+    set_fact:
+      patching_status:  
+    when: not patching.stat.exists   
+
+
+  - name: RHSAPost check
+    win_stat:
+      path: C:\Users\prvsashanmu\remediation
+    register: incident
+    ignore_errors: true
+
+  - name: RHSA set fact
+    set_fact:
+      incident_status: Incident created
+    when: incident.stat.exists
+
+  - name: RHSA set fact
+    set_fact:
+      incident_status: N/A
+    when: not incident.stat.exists
+
+
+
+  - name: Patch ivp check
+    win_stat:
+      path: C:\Users\prvsashanmu\failed_patch_{{ inventory_hostname }}
+    register: patchfail
+    ignore_errors: true
+
+  - name: Post ivp fact
+    set_fact:
+      patch_status: failed
+    when: patchfail.stat.exists
+    
+
+  - name: Post ivp fact
+    set_fact:
+      patch_status:  
+    when: not patchfail.stat.exists    
+    
+ 
+  - name: Build out CSV file
+    community.windows.win_lineinfile:
+      path: "{{ csv_path }}/{{ csv_filename }}_{{ inventory_hostname }}"
+      line: "{{ inventory_hostname }},{{ patch_group_status }} ,{{ping}} {{pinged}}, {{ prepass_status }} {{ prefail_status }}, {{ postping_status }} {{ postping1_status }}, {{ postivp_status }} {{ postivp1_status }}, {{ patching_status }} {{ patch_status }}, {{ incident_status }}, {{ hyperlink }}"
+      create: true
+      state: present
+ 
+
+
+  - name: Fetch files from remote host
+    fetch:
+      src:  "{{ csv_path }}/{{ csv_filename }}_{{ inventory_hostname }}"
+      dest: ./  
+      flat: yes
+
+

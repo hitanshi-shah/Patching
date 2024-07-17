@@ -1,0 +1,22 @@
+[
+  {
+    "hostname": "host1",
+    "ip address": "192.10.2.120",
+    "region": "EMEA",
+    "location": "EM1",
+    "os type": "Linux",
+    "patching_group": "Alpha",
+    "support_group": "os_support",
+    "suspension_state": "No"
+  },
+  {
+    "hostname": "host2",
+    "ip address": "192.10.2.122",
+    "region": "EMEA",
+    "location": "EM1",
+    "os type": "windows",
+    "patching_group": "Alpha",
+    "support_group": "os_support",
+    "suspension_state": "No"
+  }
+]

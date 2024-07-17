@@ -1,0 +1,68 @@
+---
+- name: Get Windows Update Service Information from Windows VM
+  hosts: all
+  gather_facts: no
+
+  vars:
+    ansible_connection: winrm
+    ansible_user: 'R1-CORE\{{ username }}'
+    ansible_password: "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_winrm_transport: ntlm
+    ansible_port: 5985
+
+  tasks:
+    - name: Get BITS Service Information
+      win_service:
+        name: BITS
+      register: bits_service_info
+
+    - name: Display Windows Update Service Information
+      debug:
+        var: bits_service_info
+
+
+    - name: Save Failed Host IP Addresses
+      win_shell:
+        echo "{{ ansible_host }}" >> failed_bi_{{ ansible_host }}
+      when: bits_service_info.state == 'stopped'
+
+
+    - name: Start BITS Service
+      win_service:
+        name: BITS
+        state: started
+      register: service_result
+      when: bits_service_info.state == 'stopped'
+      
+    - name: Get BITS Service Information
+      win_service:
+        name: BITS
+      register: bitsrem_service_info
+      
+    - name: Save Successful Host IP Addresses
+      win_shell:
+        echo "{{ ansible_host }}" >> passed_bi_{{ ansible_host }}
+      when: bitsrem_service_info.state == 'running'
+     
+    - name: Save Failed Host IP Addresses
+      win_shell:
+        echo "{{ ansible_host }}_INCcreated" >> failed_bi_{{ ansible_host }}_INC
+      when: bitsrem_service_info.state == 'stopped'
+        
+    - name: Fetch files from remote host
+      fetch:
+        src: passed_bi_{{ ansible_host }}
+        dest: ./  
+        flat: yes
+      when: bitsrem_service_info.state == 'running'
+      
+    - name: Fetch files from remote host
+      fetch:
+        src: failed_bi_{{ ansible_host }}
+        dest: ./  
+        flat: yes
+      when: bitsrem_service_info.state == 'stopped'
+      
+     

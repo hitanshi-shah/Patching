@@ -1,0 +1,44 @@
+- name: test
+  hosts: Linux
+  gather_facts: no
+#  ignore_unreachable: no
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+  tasks:
+    - name: test connnect
+      block:
+        - ping:
+          register: server_avail
+          timeout: 3
+          ignore_errors: yes
+      always:
+      
+      
+        - name: write details
+          shell: |
+              echo "{{ inventory_hostname}}" >> reachable_hosts
+             
+          when: server_avail.failed is false
+          delegate_to: localhost
+          
+        - name: write details
+          shell: |
+              echo "{{ inventory_hostname}}" >> unreachable_hosts
+          when: server_avail.failed is true
+          delegate_to: localhost
+
+        - name: Set variables
+          set_fact:
+             pingstat: "{{server_avail.failed}}"
+             
+        - name: Read host list from file
+          shell: |
+              cat reachable_hosts
+          register: host_list_output
+          delegate_to: localhost
+          
+        - debug:
+              msg: "{{host_list_output}}"

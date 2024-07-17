@@ -1,0 +1,40 @@
+---
+- name: Register Satellite Clients
+  hosts: Linux
+  become: yes
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    
+    
+  tasks:
+  
+    - name: Subscribe to the Appropriate Satellite Server
+      command: yum clean all; rm -fr /etc/yum.repos.d/*; rm -f /root/bootstrap.py; wget http://plgsascs5220006.r1-core.r1.aig.net/pub/bootstrap.py -O /root/bootstrap.py;  chmod +x  /root/bootstrap.py; /root/bootstrap.py -l register -p 8^tR3g1steR -s plgsascs5220006.r1-core.r1.aig.net -o AIG -L global -g "AIG/EM1/Rhel 6" -a  "EMEA Capsule RHEL6_x86_key" --force; yum install katello-agent
+      when: region == "EM1" and os_version == 6
+      ignore_errors: yes
+      async: 300
+      poll: 0
+
+    - name: Subscribe to the Appropriate Satellite Server
+      command: yum clean all; rm -fr /etc/yum.repos.d/*; rm -f /root/bootstrap.py; wget http://plgsascs5220006.r1-core.r1.aig.net/pub/bootstrap.py -O /root/bootstrap.py;  chmod +x  /root/bootstrap.py; /root/bootstrap.py -l register -p 8^tR3g1steR -s plgsascs5220006.r1-core.r1.aig.net -o AIG -L global -g "AIG/EM1/Rhel 7" -a  "EMEA Capsule RHEL7_x86_key" --force; yum install katello-agent katello-host-tools-tracer -y; katello-tracer-upload
+      when: region == "EM1" and os_version == 7
+      ignore_errors: yes
+      async: 300
+      poll: 0
+
+    - name: Subscribe to the Appropriate Satellite Server
+      command: yum clean all; rm -fr /etc/yum.repos.d/*; rm -f /root/bootstrap.py; wget http://plgsascs5220006.r1-core.r1.aig.net/pub/bootstrap.py -O /root/bootstrap.py;  chmod +x  /root/bootstrap.py; /usr/libexec/platform-python bootstrap.py bootstrap.py -l register -p 8^tR3g1steR -s plgsascs5220006.r1-core.r1.aig.net -o AIG -L global -g "AIG/EM1/Rhel 8" -a  "EMEA Capsule RHEL8_x86_key" --force; yum install katello-agent -y
+      when: region == "EM1" and os_version == 8
+      ignore_errors: yes
+      async: 300
+      poll: 0
+      
+    - debug:
+        var: os_version
+    - debug:
+        var: region
+        

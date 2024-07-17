@@ -1,0 +1,32 @@
+---
+- name: Configure Update Management in Azure for Windows
+  hosts: windows
+  tasks:
+    - name: Install required Azure modules
+      pip:
+        name:
+          - 'ansible[azure]'
+
+    - name: Set Azure credentials
+      azure_rm_credential:
+        client_id: "{{ 0f3174b7-f990-4fa4-bce4-e771213783f6 }}"
+        secret: "{{ C_w8Q~GEHVceypZyLxOe3kS2aqVEWXM59LQR~aCP }}"
+        tenant: "{{ 9b893b67-6443-4d66-89db-071299e7a04d }}"
+      delegate_to: localhost
+
+    - name: Schedule update management
+      azure_rm_virtualmachineextension:
+        resource_group: "{{ AIG-POC-RG }}"
+        virtual_machine_name: "{{ item }}"
+        publisher: Microsoft.Compute
+        virtual_machine_extension_type: CustomScriptExtension
+        type_handler_version: 1.10
+        auto_upgrade_minor_version: true
+        settings:
+          script: |
+            $Job = New-ScheduledTaskAction -Execute 'powershell' -Argument 'Get-HotFix'
+            $Trigger = New-ScheduledTaskTrigger -AtLogOn
+            Register-ScheduledTask -Action $Job -Trigger $Trigger -TaskName "Get-HotFix"
+        protected_settings: {}
+      with_items: "{{ windows_hosts }}"
+      delegate_to: localhost

@@ -1,0 +1,67 @@
+---
+- name: Check number of available security patches
+  hosts: all
+  gather_facts: yes
+  become_user: root
+  become: yes
+  become_method: dzdo  
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    ansible_become_password: "{{ ansible_password }}"
+    
+  tasks:
+    - name: Finding available security patches
+      block:
+        - ping:
+          register: rhsa_check
+          ignore_errors: true
+      always:
+
+        - name: Available patches from command module
+          shell:
+            "yum updateinfo list sec | grep -i RHSA | wc -l"
+          register: space
+          ignore_errors: true
+
+        - name: set fact
+          set_fact:
+            space_available: "{{space.stdout | int}}"
+        - debug:
+              msg: 
+            #space_available: space
+
+
+
+        - name: write pass details
+          shell:
+            echo "{{ inventory_hostname }}" >> rhsapostcheckfail
+          when: space_available > "0"
+          #when: space.rcspace > "0"
+          delegate_to: localhost
+
+        - debug:
+              msg: postcheckpass file created
+          when: space_available > "0" 
+            #when: space > "0"  
+
+        - name: write RHSA details
+          shell:
+            echo "{{ inventory_hostname}}" >> rhsapostcheckpass
+          when: space_available  == "0"
+            #when: space == "0"
+          delegate_to: localhost
+
+
+        - name: write detailslocal
+          shell:
+            echo "{{ inventory_hostname}}" >> /tmp/rhsapostcheckfail
+          when: space_available  > "0"
+
+        - name: write detailslocal
+          shell:
+            echo "{{ inventory_hostname}}" >> /tmp/rhsapostcheckpass
+          when: space_available  ==  "0"

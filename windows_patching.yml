@@ -1,0 +1,26 @@
+---
+- name: Patch Windows Servers
+  hosts: all  
+  gather_facts: yes  
+  
+  vars:
+    ansible_connection: winrm
+    ansible_user:  "{{username}}"
+    ansible_password:  "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_port: 5985  
+
+  tasks:
+    - name: Check for and install Windows updates
+      win_updates:
+        category_names:
+          - CriticalUpdates
+        state: installed  
+      ignore_errors: true
+      register: update_result 
+
+    - name: Reboot if updates were installed
+      win_reboot:
+      register: winrm_connection
+      when: update_result.reboot_required 
+      

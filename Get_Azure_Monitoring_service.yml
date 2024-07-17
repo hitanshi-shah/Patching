@@ -1,0 +1,66 @@
+---
+- name: Get Windows Update Service Information from Windows VM
+  hosts: all
+  gather_facts: no
+
+  vars:
+    ansible_connection: winrm
+    ansible_user:  'R1-CORE\{{ username }}'
+    ansible_password: "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    #ansible_python_interpreter: /usr/bin/python3
+    ansible_winrm_transport: ntlm
+    ansible_port: 5985
+
+  tasks:
+    - name: Get Azure monitoring  Service Information
+      win_service:
+        name: HealthService
+      register: azure_monitoring_service_info
+
+    - name: Display Windows Update Service Information
+      debug:
+        var: azure_monitoring_service_info
+
+
+    - name: Save Failed Host IP Addresses
+      win_shell:
+        echo "{{ ansible_host }}" >> failed_am_{{ ansible_host }}
+      when: azure_monitoring_service_info.failed == 'false'
+      #delegate_to: localhost
+      
+      
+    - name: Start Azuremonitoring Service
+      win_service:
+        name: HealthService
+        state: started
+      register: service_result
+      when: azure_monitoring_service_info.failed == 'false'
+      
+    - name: Get AM Service Information
+      win_service:
+        name: HealthService
+      register: azure_monitoring_service_inforem
+      
+    - name: Save Successful Host IP Addresses
+      win_shell:
+        echo "{{ ansible_host }}" >> passed_am_{{ ansible_host }}
+
+
+    - name: Save failed Host IP Addresses
+      win_shell:
+        echo "{{ ansible_host }}"_incident_created >> failed_am_{{ ansible_host }}_inc
+      when: azure_monitoring_service_inforem.failed == 'false'
+      
+    - name: Fetch files from remote host
+      fetch:
+        src: passed_am_{{ ansible_host }}
+        dest: ./  
+        flat: yes
+      
+    - name: Fetch files from remote host
+      fetch:
+        src: failed_am_{{ ansible_host }}
+        dest: ./  
+        flat: yes
+      when: azure_monitoring_service_inforem.failed == 'false'

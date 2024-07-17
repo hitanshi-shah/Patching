@@ -1,0 +1,38 @@
+---
+- name: Get License Details of Windows VM
+  hosts: windows
+  gather_facts: yes
+
+  vars:  
+    ansible_connection: winrm
+    ansible_user:  "{{username}}"
+    ansible_password:  "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_port: 5985
+    
+  #ignore_unreachable: yes
+  tasks:
+  
+    - name: Get System Information
+      win_shell: |
+        $lastBootTime = Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object -ExpandProperty LastBootUpTime
+
+        @{
+            "LastBootTime" = $lastBootTime;
+        } | ConvertTo-Json      
+      register: system_info  
+        
+        
+    - debug: 
+         var: system_info.stdout
+        
+    - name: Write output json file
+      win_shell:
+          echo {{ system_info }} > infofinal_{{ inventory_hostname }}   
+          
+    - name: Fetch files from remote host
+      fetch:
+        src: infofinal_{{ inventory_hostname }}
+        dest: ./  
+        flat: yes
+        ignore_errors: yes  

@@ -1,0 +1,90 @@
+---
+- name: RHEL Patching and Update List with Retry
+  hosts: all
+  gather_facts: yes
+  become_user: root
+  become: yes
+  become_method: dzdo    
+    
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    ansible_become_password: "{{ ansible_password }}"
+
+
+  tasks:
+    - name: Update RHEL packages
+      yum:
+        name: "*"
+        state: latest
+        security: yes
+      register: yum_result
+      ignore_errors: yes
+      
+      
+    - debug:
+         var: yum_result
+   
+
+    - name: Check if patching failed
+      fail:
+        msg: "Patching failed. Rebooting and retrying."
+      when: yum_result.failed
+
+    - name: Reboot the host
+      command: "reboot"
+      async: 0
+      poll: 0
+      ignore_errors: yes
+      when: yum_result.failed
+
+    - name: Wait for the host to come back online
+      wait_for_connection:
+        timeout: 300
+      when: yum_result.failed
+
+    - name: Retry patching after reboot
+      yum:
+        name: "*"
+        state: latest
+      when: yum_result.failed
+
+    - name: List updated packages to a file
+      shell: rpm -qa --last | head -n 10 > updated_packages.txt
+      when: yum_result.changed
+
+    - name: Capture patching failures to a file
+      copy:
+        content: "{{ yum_result.msg }}"
+        dest: patch_failures.txt
+      when: yum_result.failed
+
+    - name: write details
+      shell:
+            echo "{{ inventory_hostname }}" >> /tmp/patching
+      when: yum_result.changed == true
+      
+    - name: write unpatched details
+      shell:
+            echo "{{ inventory_hostname }}" >> /tmp/unpatched
+      when: yum_result.changed == false   
+  
+    - name: write patchfailed details
+      shell:
+            echo "{{ inventory_hostname }}" >> /tmp/patchfailed
+      when: yum_result.failed
+
+
+    - name: write details
+      shell:
+            echo "{{ inventory_hostname }}" >> patching
+      when: yum_result.changed == true
+      delegate_to: localhost
+      
+    - name: write details
+      shell:
+            echo "{{ inventory_hostname }}" >> patching
+      when: yum_result.changed == false
+      delegate_to: localhost

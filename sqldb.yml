@@ -1,0 +1,30 @@
+---
+- name: Run SQL Query on Remote MSSQL Database
+  hosts: all 
+  gather_facts: no
+  
+  
+  vars:
+    ansible_connection: winrm
+    ansible_user:  "{{username}}"
+    ansible_password:  "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_port: 5985
+
+  tasks:
+  
+    - name: Copy file to remote host
+      ansible.builtin.copy:
+        src: ./insert_queries.sql
+        dest: C:\Temp\
+  
+  
+    - name: Run SQL Query
+      win_command: sqlcmd -S EC2AMAZ-2SULOB3\TESTDB  -d Student -i C:\Temp\insert_queries.sql
+      args:
+        executable: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      register: sql_output
+
+    - name: Display SQL Query Output
+      debug:
+        var: sql_output.stdout_lines

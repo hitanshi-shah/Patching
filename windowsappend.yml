@@ -1,0 +1,13 @@
+---
+- name: Append content of files
+  hosts: localhost
+  gather_facts: no
+  become: yes
+  
+  tasks:
+
+    - name: write detailslocal
+      ansible.builtin.shell:
+        cat passed_windowsup_* | awk '!a[$0]++' > winupdate_precheck_passed1
+        cat passed_LS_* | awk '!a[$0]++' > LS_precheck_passed
+        

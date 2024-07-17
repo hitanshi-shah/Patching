@@ -1,0 +1,38 @@
+---
+- name: Get CBS Log Information
+  hosts: windows
+  gather_facts: no
+
+  vars:
+    ansible_connection: winrm
+    ansible_user: 
+    ansible_password: 
+    ansible_winrm_server_cert_validation: ignore
+    ansible_port: 5985
+
+  tasks:
+    - name: Execute PowerShell Command
+      win_shell: Get-Content C:\Windows\Logs\CBS\cbs.log | Select-String -Pattern '([SR].*repairing)|([SR].*repaired)|([SR].*corrupt)'
+      register: cbs_log_content
+
+    - name: Filter IP Addresses
+      set_fact:
+        repaired_ips: "{{ cbs_log_content.stdout_lines | select('match', '(\d+\.\d+\.\d+\.\d+)') | map('regex_replace', '.*(\d+\.\d+\.\d+\.\d+).*', '\\1') | list }}"
+      when: cbs_log_content.rc == 0
+
+    - name: Save Repaired/Repairing/Corrupt IPs to File
+      copy:
+        content: "{{ repaired_ips | join('\n') }}"
+        dest: ./repaired_repairing_corrupt_ips.txt
+      when: repaired_ips | length > 0
+
+    - name: Filter Non-Matching IP Addresses
+      set_fact:
+        non_matching_ips: "{{ cbs_log_content.stdout_lines | select('match', '(\d+\.\d+\.\d+\.\d+)') | map('regex_replace', '.*(\d+\.\d+\.\d+\.\d+).*', '\\1') | list }}"
+      when: cbs_log_content.rc == 0
+
+    - name: Save Non-Matching IPs to File
+      copy:
+        content: "{{ non_matching_ips | join('\n') }}"
+        dest: ./non_matching_ips.txt
+      when: non_matching_ips | length > 0

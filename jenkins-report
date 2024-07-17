@@ -1,0 +1,45 @@
+pipeline{
+     agent {
+       docker {
+             image 'harimaumalaya:v0.0.1j'
+             label 'docker'
+             registryUrl 'https://046099537821.dkr.ecr.us-east-1.amazonaws.com'
+	     args '-v $WORKSPACE:/var/tmp'
+	     args '-u root'
+	     reuseNode true
+
+       }
+   }
+
+   stages {
+      stage('Install Ansible'){
+            steps{
+		script{  
+                 sh """
+		    apt-get update
+                    apt-get install -y ansible
+                    pip install boto3
+                    ls -ltr /usr/bin/*
+                    ansible --version
+                    which pip
+                    which python
+                    python3 -m pip install boto3
+		    pwd
+	ls -ltr
+                    """
+            }
+	    }
+     }
+       
+        stage('report.yml') {
+            steps {
+                script {
+                                
+                                sh '''
+                                 ansible-playbook -i inventory reporttest.yml
+                                '''
+                      }
+                  }
+           }
+	 }
+}   

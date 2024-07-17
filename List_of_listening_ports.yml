@@ -1,0 +1,14 @@
+---
+- name: List of listening ports
+  hosts: all
+  gather_facts: no  
+
+  tasks:
+    - name: Get list of listening ports
+      win_shell: Get-NetTCPConnection -State Listen | Select-Object LocalAddress, LocalPort, State
+      register: listening_ports
+
+    - name: Display listening ports
+      debug:
+        var: listening_ports.stdout_lines
+

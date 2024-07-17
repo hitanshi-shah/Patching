@@ -1,0 +1,45 @@
+- name: Obtain Azure access token
+  hosts: localhost
+  tasks:
+  
+    - name: Install Azure Python SDK
+      pip:
+       name: azure-mgmt-monitor
+       state: present
+  
+    - name: Get Azure access token
+      uri:
+        url: "https://login.microsoftonline.com/9b893b67-6443-4d66-89db-071299e7a04d/oauth2/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          grant_type: client_credentials
+          client_id: "0f3174b7-f990-4fa4-bce4-e771213783f6"
+          client_secret: "C_w8Q~GEHVceypZyLxOe3kS2aqVEWXM59LQR~aCP"
+          resource: "https://management.azure.com/"
+      register: access_token_response
+
+    - debug:
+        msg: "Azure Access Token: {{ access_token_response.json.access_token }}"
+        
+        
+    - set_fact:
+        azure_access_token: "{{ access_token_response.json.access_token }}"
+       
+        
+    - name: Retrieve Update Management Host Status
+      uri:
+        url: "https://management.azure.com/subscriptions/754f0afe-9ffe-4698-9d59-ed64f732e5ab/resourceGroups/AIG-POC-RG/providers/microsoft.operationalinsights/workspaces/72c7f09e-9c03-4210-b826-f2cbb88c6416/providers/Microsoft.Insights/metris?api-version=2019-01-01&$filter=(Type eq 'Microsoft.UpdateManagement/VMInventory') and name.value eq 'GISC_W4_Xray_CHG1420295_Bigar_Philomena'"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ access_token_response }}"
+          Content-Type: "application/json"
+      register: update_status_response
+
+    - name: Parse Update Status
+      debug:
+        msg: "Host: {{ item.properties.computer }} - Update Status: {{ item.properties.lastModifiedOn }}"
+      loop: "{{ update_status_response.json.value }}"       
+        
+        
+ 

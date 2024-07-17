@@ -1,0 +1,52 @@
+- hosts: all
+  become_user: root
+  become: yes
+  become_method: dzdo    
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    ansible_become_password: "{{ ansible_password }}"
+
+    
+  #ignore_unreachable: yes
+  tasks:
+  - name: verify server availablity
+    ping:
+    register: avail_detail
+  - name: Capturing of commands output
+    block:
+    - name: Collecting outputs
+      shell: |
+           echo =========== Output of {{ item }} ============ >> "/tmp/{{ inventory_hostname }}_postrecords"
+           {{ item }} >> "/tmp/{{ inventory_hostname }}_postrecords"
+      with_items:
+      - uname -a
+      - cat /etc/redhat-release
+      - uptime
+      - df -h
+      - cat /etc/fstab
+      - ifconfig -a |wc -l
+      - netstat -rnv |wc -l
+      - cat /etc/resolv.conf
+      - cat /etc/resolv.conf | wc -l
+      - crontab -l
+      - crontab -l | wc -l
+    rescue:
+      - debug: var=ansible_failed_result.msg
+
+  - name: Copy the remote files
+    become: yes
+    fetch:
+      src: "/tmp/{{ inventory_hostname }}_postrecords"
+      dest: "./"
+      flat: yes
+
+
+# - name: Delete remote file
+#    become: yes
+#    file:
+#      path: "/tmp/{{ inventory_hostname }}_postrecords"
+#      state: absent

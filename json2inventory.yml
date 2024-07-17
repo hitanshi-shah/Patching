@@ -1,0 +1,6 @@
+---
+- name: Convert Excel List to Ansible Inventory
+  hosts: localhost
+  tasks:
+    - name: Convert json to Inventory
+      command: python json2inventory.py

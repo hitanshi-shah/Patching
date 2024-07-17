@@ -1,0 +1,69 @@
+---
+- name: Patch Windows Servers
+  hosts: all  
+  gather_facts: yes  
+  
+  vars:
+    ansible_connection: winrm
+    ansible_user:  'R1-CORE\{{ username }}'
+    ansible_password:  "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_winrm_transport: ntlm
+    ansible_port: 5985  
+
+  tasks:
+    - name: Check for and install Windows updates
+      win_updates:
+        category_names:
+          - "Security Updates"
+        state: installed  
+      ignore_errors: yes
+      register: update_result 
+
+    - name: Reboot if updates were installed
+      win_reboot:
+      register: winrm_connection
+      when: update_result.reboot_required
+      
+    - name: Reboot if patching failed
+      win_reboot:
+      register: winrm_connection
+      when: update_result.failed == true     
+      
+    - debug:
+        var: update_result
+
+    - debug:
+        var: update_result.installed_update_count
+               
+    - name: Capture unpatched hosts
+      win_shell:
+        echo "{{ inventory_hostname }}" > passed_patch_{{ inventory_hostname }}
+      when: update_result.installed_update_count == 0
+
+    - name: Capture successful hosts
+      win_shell:
+        echo "{{ inventory_hostname }}" > passed_patch_{{ inventory_hostname }}
+      when: update_result.installed_update_count > 0
+
+    - name: Capture failed hosts
+      win_shell:
+        echo "{{ inventory_hostname }}" > failed_patch_{{ inventory_hostname }}
+      when: update_result.failed == true
+
+
+    - name: Fetch files from remote host
+      fetch:
+        src: passed_patch_{{ inventory_hostname}}
+        dest: ./  
+        flat: yes
+      when: update_result.installed_update_count > 0
+      
+
+    - name: Fetch files from remote host
+      fetch:
+        src: passed_patch_{{ inventory_hostname}}
+        dest: ./  
+        flat: yes
+      when: update_result.installed_update_count == 0
+

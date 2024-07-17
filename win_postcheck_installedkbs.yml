@@ -1,0 +1,34 @@
+---
+- name: Find Available and Installed KBs
+  hosts: all
+  gather_facts: no
+  
+  vars:
+   ansible_connection: winrm
+   ansible_user:  'R1-CORE\{{ username }}'
+   ansible_password:  "{{password}}"
+   ansible_winrm_server_cert_validation: ignore
+   ansible_winrm_transport: ntlm
+   ansible_port: 5985
+
+
+  tasks:
+    - name: Get available KBs until yesterday
+      win_shell: Get-HotFix -Description "Update" | Where-Object { $_.InstalledOn -lt (Get-Date).AddDays(-1) } | Select-Object -Property HotFixID,Description
+      register: available_kbs
+      changed_when: false
+
+    - name: Get KBs installed today
+      win_shell: Get-HotFix -Description "Update" | Where-Object { $_.InstalledOn -ge (Get-Date).Date } | Select-Object -Property HotFixID,Description
+      register: installed_kbs
+      changed_when: false
+
+    - name: Display Available KBs until yesterday
+      debug:
+        var: available_kbs.stdout_lines
+
+    - name: Save Installed KBs today to a file
+      win_shell:
+          echo {{ installed_kbs.stdout_lines }} >> installed_kbslist
+      when: installed_kbs.stdout_lines | length > 0
+

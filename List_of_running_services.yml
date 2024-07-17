@@ -1,0 +1,12 @@
+---
+- name: List of running services
+  hosts: all
+  gather_facts: no  
+  tasks:
+    - name: Get list of running services
+      win_shell: Get-Service | Where-Object {$_.Status -eq "Running"}
+      register: running_services
+    - name: Display running services
+      debug:
+        var: running_services
+

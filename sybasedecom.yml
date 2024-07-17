@@ -1,0 +1,42 @@
+---
+- name: check reachable hosts
+  hosts: all
+  gather_facts: yes
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    dbpass: "{{dbpass}}"
+    sybase_pass: "{{sybase_pass}}"
+    server_name: "{{server_name}}"
+    instance_name: "{{instance_name}}"
+
+  
+  tasks:
+    - copy:
+        src: ./sybase_db_backup.sql
+        dest: '/tmp'
+        remote_src: no
+       
+    - name: Change permissions of sybase.sql file
+      shell: chmod 777 /tmp/sybase.sql
+      
+      
+    - copy:
+        src: ./sybasedecom.sh
+        dest: '/tmp'
+        remote_src: no
+       
+    - name: Change permissions of script file
+      shell: chmod 777 /tmp/sybase_db_backup.sql
+                        
+    - name: Execute the script
+      shell: bash /tmp/sybasedecom.sh {{ ansible_password }} {{ sybase_pass }} {{ dbpass }} {{ server_name }} {{ instance_name }}
+      register: sybase_output      
+
+    - name: Display SQL Query Output
+      debug:
+        var: sybase_output.stdout_lines
+ 

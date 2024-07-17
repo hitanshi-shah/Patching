@@ -1,0 +1,30 @@
+---
+- name: check reachable hosts
+  hosts: all
+  gather_facts: yes
+  vars:
+    ansible_connection: winrm
+    ansible_user: 'R1-CORE\{{ username }}'
+    ansible_password: '"{{ password }}"'
+    db_name: "{{ db_name }}"
+    server_name: "{{ server_name }}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_winrm_transport: ntlm
+    ansible_port: 5985
+  
+  tasks:
+    - win_copy:
+        src: ./prvaddup.sql
+        dest: 'C:\Temp\'
+        remote_src: no
+        
+    - name: Run SQL Query
+      win_command: sqlcmd -S {{ server_name }}  -d {{ db_name }} -i C:\Temp\prvaddup.sql
+      args:
+        executable: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+      register: sql_output
+
+    - name: Display SQL Query Output
+      debug:
+        var: sql_output.stdout_lines
+ 

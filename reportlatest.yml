@@ -1,0 +1,429 @@
+---
+- name: Generate an HTML report from jinja template
+  hosts: Linux
+  gather_facts: true
+  vars:
+ 
+    #random settings
+    csv_path: /tmp
+    csv_filename: report.csv
+    #headers: Hostname,Ping,Distro Ver,Kernel Ver,Last Rebooted,Disk Space,Prechecks, Diskcheck, RHSA_Precheck, Patching, RHSA_Postcheck, Link
+    headers: Hostname, Patching group, Prepatch reboot status, Prepatch IVP checks, Postpatch status, Post reboot status, Patch status, Incident, Git link
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+ 
+  tasks:
+
+  - name: test connnect
+    block:
+        - ping:
+          register: server_avail
+          timeout: 3
+          ignore_errors: yes
+    always:
+        - name: write details
+          shell: |
+            echo "{{ inventory_hostname}}" passed
+          when: server_avail.failed is false
+          register: server_availf
+          delegate_to: localhost
+
+        - name: write details
+          shell: |
+            echo "{{ inventory_hostname}}" failed
+          when: server_avail.failed is true
+          register: server_availfail
+          delegate_to: localhost
+
+  - name: Ping set fact
+    set_fact:
+      ping: Passed
+    when: server_availf.failed is false
+
+
+  - name: Ping set fact
+    set_fact:
+      pinged: Failed
+    when: server_availfail.failed is true
+
+  - name: Ping set fact
+    set_fact:
+      pinged:
+    when: not server_availfail.failed is true
+
+  - name: Gather last reboot
+    ansible.builtin.shell: last reboot | grep -m1 "" | awk '{ print $1, $6, $7, $8 }'
+    register: rebooted
+
+  - name: get service facts
+    ansible.builtin.service_facts:
+
+  - name: Get tanium  service status
+    ansible.builtin.debug:
+       var: ansible_facts.services["taniumclient.service"]
+    register: service_status
+
+  - name: Disk usage from command module
+    shell:
+      "df -h / | awk '{print $5}' | tail -1 | cut -d '%' -f1"
+    register: space
+    ignore_errors: true
+
+
+  - name: Precheck status
+    shell:
+      "[ -f /tmp/*_records ] | echo $?"
+    register: precheck_pass
+    ignore_errors: true
+
+  - name: Precheck set fact
+    set_fact:
+      precheck: Passed
+    when: precheck_pass.stdout == "0"
+
+
+      #  - name: disk status
+      #shell:
+      #"[ -f /tmp/precheckpass ] && echo $?"
+      #register: precheck_pass_disk
+      #ignore_errors: true
+
+  - name: disk name
+    stat:
+      path: /tmp/disk_precheckpass
+    register: precheck_pass_disk
+    ignore_errors: true
+
+  - name: disk set fact
+    set_fact:
+      precheck_pass: Passed
+    when: precheck_pass_disk.stat.exists
+
+  - name: disk set fact
+    set_fact:
+      precheck_pass:
+    when: not precheck_pass_disk.stat.exists
+
+      #- name: disk status
+      #shell:
+      #"[ -f /tmp/remediation ] && echo $?"
+      #register: precheck_pass_disk1
+      #ignore_errors: true
+  - name: disk rem name
+    stat:
+      path: /tmp/diskremediation
+    register: precheck_pass_disk1
+    ignore_errors: true
+
+  - name: disk set fact
+    set_fact:
+      precheck_passed: corrected
+    when: precheck_pass_disk1.stat.exists
+
+  - name: disk set fact
+    set_fact:
+      precheck_passed: 
+    when: not precheck_pass_disk1.stat.exists
+    
+
+  - name: disk remfailed name
+    stat:
+      path: /tmp/diskremfail
+    register: precheck_pass_disk2
+    ignore_errors: true
+
+  - name: disk set fact
+    set_fact:
+      precheck_passed1: INC created
+    when: precheck_pass_disk2.stat.exists
+
+  - name: disk set fact
+    set_fact:
+      precheck_passed1: 
+    when: not precheck_pass_disk2.stat.exists    
+
+  - name: RHSAPre check
+    stat:
+      path: /tmp/rhsa_precheckpass
+    register: precheck_rhsa
+    ignore_errors: true
+
+  - name: RHSA set fact
+    set_fact:
+      precheck_rhsa_status: Passed
+    when: precheck_rhsa.stat.exists
+
+  - name: RHSA set fact
+    set_fact:
+      precheck_rhsa_status:
+    when: not precheck_rhsa.stat.exists
+
+  - name: RHSAPost check
+    stat:
+      path: /tmp/postcheckpass
+    register: postcheck_rhsa1
+    ignore_errors: true
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status1: Passed
+    when: postcheck_rhsa1.stat.exists
+    
+  - name: RHSAPost check
+    stat:
+      path: /tmp/rhsapostcheckfail
+    register: postcheck_rhsa1
+    ignore_errors: true
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status1: Failed
+    when: postcheck_rhsa1.stat.exists
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status1:
+    when: not postcheck_rhsa1.stat.exists
+  
+  - name: RHSAPost check
+    stat:
+      path: /tmp/remediation
+    register: postcheck_rhsa
+    ignore_errors: true
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status: Incident created
+    when: postcheck_rhsa.stat.exists
+
+  - name: RHSA set fact
+    set_fact:
+      postcheck_status:
+    when: not postcheck_rhsa.stat.exists
+
+
+
+  - name: Patch check
+    stat:
+      path: /tmp/patching
+    register: patching
+    ignore_errors: true
+
+  - name: Patch set fact
+    set_fact:
+      patching_status: Passed
+    when: patching.stat.exists
+
+  - name: Patch set fact
+    set_fact:
+      patching_status: Failed
+    when: not patching.stat.exists
+    
+  - name: Patch set fact
+    set_fact:
+      patching_status: 
+    when: not patching.stat.exists   
+ 
+
+  - name: precheckfail
+    stat:
+      path: /tmp/disk_precheckIncident
+    register: prefail
+    ignore_errors: true
+
+  - name: Patch set fact
+    set_fact:
+      prefail_status: Failed
+    when: prefail.stat.exists
+
+  - name: Patch set fact
+    set_fact:
+      prefail_status: 
+    when: not prefail.stat.exists
+    
+  - name: precheckpass
+    stat:
+      path: /tmp/prepass
+    register: prepass
+    ignore_errors: true
+
+  - name: Patch set fact
+    set_fact:
+      prepass_status: Passed
+    when: prepass.stat.exists
+
+  - name: Patch set fact
+    set_fact:
+      prepass_status: 
+    when: not prepass.stat.exists
+    
+
+  - name: Set link value
+    stat:
+      path: /tmp/patchfailed
+    register: linkstat
+    ignore_errors: true
+    
+  - name: Set Link
+    set_fact:
+      linkstat_status: https://github.aig.net/sashanmu/aig_patching_automation/blob/master/{{ inventory_hostname }}_records
+    when: linkstat.stat.exists
+   
+  - name: Create a hyperlink
+    set_fact:
+       hyperlink: "<a href='{{ linkstat_status }}'>{{ linkstat_status }}</a>"
+    when: linkstat.stat.exists
+ 
+
+  - name: unSet Link
+    set_fact:
+      hyperlink: N/A
+    when: not linkstat.stat.exists
+    
+    
+  - name: set fact
+    set_fact:
+      space_available: "{{space.stdout | int}}"
+
+  - name: Patch group fact
+    set_fact:
+      patch_group_status: Demogroup
+
+  - name: Post ping check
+    stat:
+      path: /tmp/postreachable
+    register: postping
+    ignore_errors: true
+
+  - name: Postping set fact
+    set_fact:
+      postping_status: Passed
+    when: postping.stat.exists
+
+  - name: Postping set fact
+    set_fact:
+      postping_status: 
+    when: not postping.stat.exists
+    
+    
+  - name: Post ping check
+    stat:
+      path: /tmp/postunreachable
+    register: postping1
+    ignore_errors: true
+
+  - name: Postping set fact
+    set_fact:
+      postping1_status: Failed
+    when: postping1.stat.exists
+
+  - name: Postping set fact
+    set_fact:
+      postping1_status: 
+    when: not postping1.stat.exists
+
+    
+
+  - name: Post ivp check
+    stat:
+      path: /tmp/{{ inventory_hostname }}_postrecords
+    register: postivp
+    ignore_errors: true
+
+  - name: Post ivp fact
+    set_fact:
+      postivp_status: Passed
+    when: postivp.stat.exists
+
+  - name: Post ivp fact
+    set_fact:
+      postivp_status: 
+    when: not postivp.stat.exists
+    
+    
+
+  - name: Post ivp check
+    stat:
+      path: /tmp/postivpfail
+    register: postivp1
+    ignore_errors: true
+
+  - name: Post ivp fact
+    set_fact:
+      postivp1_status: Failed
+    when: postivp1.stat.exists
+
+  - name: Post ivp fact
+    set_fact:
+      postivp1_status: 
+    when: not postivp1.stat.exists
+
+
+  - name: Post ivp check
+    stat:
+      path: /tmp/unpatched
+    register: unpatched
+    ignore_errors: true
+
+
+  - name: Patch fact
+    set_fact:
+      patch_status: Failed 
+    when: unpatched.stat.exists
+    
+  - name: Post ivp fact
+    set_fact:
+      patch_status:  
+    when: not unpatched.stat.exists    
+    
+  - name: Incident check
+    stat:
+      path: /tmp/disk_precheckIncident
+    register: incident
+    ignore_errors: true
+
+  - name: Post ivp fact
+    set_fact:
+      incident_status: INCraised
+    when: incident.stat.exists
+
+  - name: Post ivp fact
+    set_fact:
+      incident_status: N/A
+    when: not incident.stat.exists
+
+  - name: Save CSV headers
+    ansible.builtin.lineinfile:
+      dest: "{{ csv_path }}/{{ csv_filename }}"
+      line: "{{ headers }}"
+      create: true
+      state: present
+    delegate_to: localhost
+    run_once: true
+ 
+  - name: Build out CSV file
+    ansible.builtin.lineinfile:
+      dest: "{{ csv_path }}/{{ csv_filename }}"
+      line: "{{ inventory_hostname }},{{ patch_group_status }} ,{{ping}} {{pinged}}, {{ prepass_status }} {{ prefail_status }}, {{ postping_status }} {{ postping1_status }}, {{ postivp_status }} {{ postivp1_status }}, {{ patching_status }} {{ patch_status }},  {{ incident_status }}, {{ hyperlink }}"
+      create: true
+      state: present
+    delegate_to: localhost
+ 
+  - name: Read in CSV to variable
+    community.general.read_csv:
+      path: "{{ csv_path }}/{{ csv_filename }}"
+    register: csv_file
+    delegate_to: localhost
+    run_once: true
+
+ 
+  - name: Save job report to {{ csv_path }}
+    delegate_to: localhost
+    delegate_facts: True
+    run_once: yes
+    template:
+        src: report.html.j2
+        dest: "{{ csv_path }}/job_report.html"
+        remote_src: yes

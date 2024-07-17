@@ -1,0 +1,30 @@
+---
+ - hosts: all
+   vars:
+     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+     ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+   tasks:
+   - name: get service facts
+     ansible.builtin.service_facts:
+
+   - name: Get tanium  service status
+     ansible.builtin.debug:
+       var: ansible_facts.services["taniumclient.service"]
+     register: service_status
+   
+   - name: write details
+     shell:
+          echo "{{ inventory_hostname}} has tanium running" >> /tmp/taniumstatus
+     when: '"running" in ansible_facts.services["taniumclient.service"].state'
+     delegate_to: localhost
+
+   - name: write details
+     shell:
+          echo "{{ inventory_hostname}} has tanium running" >> /tmp/taniumstatus
+     when: '"not running" in ansible_facts.services["taniumclient.service"].state'
+     delegate_to: localhost
+
+
+

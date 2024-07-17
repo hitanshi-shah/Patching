@@ -1,0 +1,23 @@
+---
+
+- hosts: all
+  become: false
+  gather_facts: false
+
+  tasks:
+
+  - name: Check if adclient is running
+    shell: systemctl status adclient
+    ignore_errors: yes
+    changed_when: false
+    register: service_adclient_status
+
+  - name: Report status of adclient
+    fail:
+      msg: |
+       Service adclient is not running.
+       Output of `systemctl status adclient`:
+       {{ service_adclient_status.stdout }}
+       {{ service_adclient_status.stderr }}
+    when: service_adclient_status | failed
+

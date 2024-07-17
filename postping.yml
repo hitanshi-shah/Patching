@@ -1,0 +1,45 @@
+- name: Ping
+  hosts: all
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+  gather_facts: no
+#  ignore_unreachable: no
+  tasks:
+    - name: test connnect
+      block:
+        - ping:
+          register: server_avail
+          timeout: 3
+          ignore_errors: yes
+      always:
+        - name: write details
+          shell: |
+            echo "{{ inventory_hostname}}" >> /tmp/postreachable_hosts
+          when: server_avail.failed is false
+          delegate_to: localhost
+        - name: write details
+          shell: |
+            echo "{{ inventory_hostname}}" >> /tmp/postunreachable_hosts
+          when: server_avail.failed is true
+          delegate_to: localhost
+         
+        - name: write details locally
+          shell: |
+            echo "{{ inventory_hostname}}" >> /tmp/postreachable
+          when: server_avail.failed is false
+
+
+        - name: write details
+          shell: |
+            echo "{{ inventory_hostname}}" >> postreachable_hosts
+          when: server_avail.failed is false
+          delegate_to: localhost
+          
+        - name: write details
+          shell: |
+            echo "{{ inventory_hostname}}" >> postunreachable_hosts
+          when: server_avail.failed is true
+          delegate_to: localhost

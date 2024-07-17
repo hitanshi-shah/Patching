@@ -1,0 +1,66 @@
+---
+- name: Check Disk Sizes and Write Large Filesystems
+  hosts: all
+  gather_facts: yes
+  become_user: root
+  become: yes
+  become_method: dzdo    
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    ansible_become_password: "{{ ansible_password }}"
+
+    
+
+  tasks:
+    - name: Find filesystems with utilization over 80%
+      shell: df -hT | awk 'NR > 1 && $6+0 > 40 {print $7}'
+      register: high_utilization_filesystems
+      changed_when: false
+
+    - debug:
+        var: high_utilization_filesystems
+    
+    - name: Get du -sh output for high utilization filesystems
+      shell: |
+        cd "{{ item }}"
+        du -sh "{{ item }}"  *
+      register: du_output
+      with_items: "{{ high_utilization_filesystems.stdout_lines }}"
+      ignore_errors: yes
+
+    - name: Write du -sh output to a file
+      copy:
+        content: "{{ item.stdout }}"
+        dest: high_utilization_filesystems.txt
+      with_items: "{{ du_output.results }}"
+      when: item.stdout is defined 
+
+
+    - name: Find filesystems with utilization over 80%
+      shell: df -hT | awk 'NR > 1 && $6+0 > 40 {print $7}'
+      register: high_utilization_filesystemsrem
+      changed_when: false
+
+
+    - name: write details
+      shell:
+            echo "{{ inventory_hostname }}" >> disk_precheckpass
+      when: high_utilization_filesystemsrem.stdout == ""
+      delegate_to: localhost
+
+
+    - name: write details
+      shell:
+            echo "{{ inventory_hostname }}_inc" >> disk_precheckIncident
+      when: high_utilization_filesystemsrem.stdout | length > 0
+      delegate_to: localhost
+
+
+    - name: write details
+      shell:
+            echo "{{ inventory_hostname }}_inc" >> /tmp/disk_precheckIncident
+      when: high_utilization_filesystemsrem.stdout | length > 0

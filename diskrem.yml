@@ -1,0 +1,71 @@
+---
+- name: Remediate disk
+  hosts: all
+  become: yes
+  
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ANSIBLE_HOST_KEY_CHECKING: false
+    ansible_user: "{{username}}"
+    ansible_password: "{{password}}"
+    
+  tasks:
+    
+        - name: Ansible find files to delete
+          find:
+            paths: /test
+            patterns: "testfile.img"
+          register: files_to_delete
+
+
+        - name: Ansible remove files
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          with_items: "{{ files_to_delete.files }}"
+
+        - name: Disk usage from command module
+          shell: 
+                "df -h / | awk '{print $5}' | tail -1 | cut -d '%' -f1"
+          register: space
+          ignore_errors: true
+
+        - name: set fact
+          set_fact:
+            space_available: "{{space.stdout | int}}"
+
+        - debug:
+              msg: Threshold reached for host "{{space.stdout_lines}}"
+          when: space_available  > "15"
+
+        - name: write details
+          shell:
+          #rm -rf /home/ubuntu/Ansible_plays/pre_patch/remediation.txt
+            echo "{{ inventory_hostname }}" >> diskremfail
+            echo "INCIDENT Created"
+          when: space_available  > "15"
+          delegate_to: localhost
+
+        - debug:
+              msg: Remediation file created
+          when: space_available  > "15"
+
+        - name: write details
+          shell:
+          #rm -rf /home/ubuntu/Ansible_plays/pre_patch/precheckpass.txt
+            echo "{{ inventory_hostname}}" >> diskrempassed
+          when: space_available  < "15"
+          delegate_to: localhost
+
+        - name: write details
+          shell:
+          #rm -rf /home/ubuntu/Ansible_plays/pre_patch/remediation.txt
+            echo "{{ inventory_hostname }}" >> /tmp/diskremfail
+            echo "INCIDENT Created"
+          when: space_available  > "15"
+
+        - name: write details
+          shell:
+          #rm -rf /home/ubuntu/Ansible_plays/pre_patch/remediation.txt
+            echo "{{ inventory_hostname }}" >> /tmp/diskremediation
+          when: space_available  < "15"

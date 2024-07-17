@@ -1,0 +1,59 @@
+---
+- name: win_ping module demo
+  hosts: Windows
+  become: false
+  gather_facts: no
+  
+  vars:
+    ansible_connection: winrm
+    ansible_user: 'R1-CORE\{{ username }}'
+    ansible_password: "{{password}}"
+    ansible_winrm_server_cert_validation: ignore
+    ansible_winrm_transport: ntlm
+    ansible_port: 5985
+ 
+  tasks:
+ 
+    - name: test connection
+      block:
+        - ansible.windows.win_ping:
+          register: server_avail
+          ignore_errors: yes
+
+          
+        - debug:
+              msg: "Host is reachable"
+          when: server_avail.failed is false
+          
+          
+        - name: Set variables
+          set_fact:
+             pingstat: "{{server_avail.failed}}"
+             
+        - debug:
+             msg: "{{ pingstat }}"   
+            
+
+        - name: write details
+          win_shell: |
+             echo "{{ inventory_hostname}}" >> winreachable_{{ inventory_hostname }}
+          when: server_avail.failed is false
+
+
+        - name: Fetch files from remote host
+          fetch:
+            src: winreachable_{{ inventory_hostname }}
+            dest: ./  
+            flat: yes
+          when: server_avail.failed is false
+      
+          
+#        - name: write details      
+#          win_shell: |
+#              Get-CimInstance Win32_OperatingSystem | Select-Object LastBootUpTime
+#          register: server_availf
+#          #when: inventory_hostname in groups["reachable"]
+          
+#        - debug:
+#            msg: "{{server_availf}}"
+#          #when: inventory_hostname in groups["ping"]

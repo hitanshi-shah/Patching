@@ -1,0 +1,16 @@
+---
+- name: Get WSUS Registry Information from Windows VM
+  hosts: windows_vm
+  gather_facts: no
+
+  tasks:
+    - name: Execute PowerShell Command
+      win_shell: |
+        $wsusregitem = Get-ItemProperty -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\
+        $wsusregitem | ConvertTo-Json
+      register: wsus_registry_info
+
+    - name: Display WSUS Registry Information
+      debug:
+        var: wsus_registry_info.stdout_lines
+

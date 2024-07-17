@@ -1,0 +1,9 @@
+- name: Retrieve Update Management Status for Each Host
+  hosts: localhost
+  tasks:
+    - name: Get Update Management Status
+      command: az monitor log-analytics query --workspace '72c7f09e-9c03-4210-b826-f2cbb88c6416' --analytics-query "Heartbeat | summarize LastHeartbeat = arg_max(TimeGenerated, *) by Computer" --output json
+      register: update_status_response
+
+    - debug:
+        var: update_status_response.stdout
